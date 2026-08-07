@@ -58,6 +58,8 @@ model InputDefinition {
 
   category String?
 
+  status String @default("ACTIVE")
+
   createdAt DateTime @default(now())
 
   model BusinessModel @relation(fields: [modelId], references: [id], onDelete: Cascade)
