@@ -9,6 +9,10 @@ import {
 } from "@/features/models/services/model-service";
 
 import {
+  requireCurrentUser,
+} from "@/lib/current-user";
+
+import {
   Badge,
 } from "@/components/ui/badge";
 
@@ -34,9 +38,14 @@ export default async function ModelDetailPage({
   }
 
 
+  const user =
+    await requireCurrentUser();
+
+
   const model =
     await getBusinessModelById(
-      modelId
+      modelId,
+      user.id
     );
 
 

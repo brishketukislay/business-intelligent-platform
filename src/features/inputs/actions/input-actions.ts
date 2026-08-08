@@ -1,6 +1,12 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import {
+  revalidatePath,
+} from "next/cache";
+
+import {
+  requireCurrentUser,
+} from "@/lib/current-user";
 
 import {
   inputDefinitionSchema,
@@ -59,6 +65,10 @@ export async function createInputAction(
   formData: FormData
 ) {
 
+  const user =
+    await requireCurrentUser();
+
+
   const data =
     formDataToInputDefinition(
       formData
@@ -79,8 +89,12 @@ export async function createInputAction(
     );
 
     return {
+
       success: false,
-      error: result.error.flatten(),
+
+      error:
+        result.error.flatten(),
+
     };
 
   }
@@ -88,17 +102,15 @@ export async function createInputAction(
 
   try {
 
-    await createInputDefinition(
-      result.data
-    );
+    const input =
+      await createInputDefinition(
+        result.data,
+        user.id
+      );
 
 
     revalidatePath(
-      `/models/${result.data.modelId}/inputs`
-    );
-
-    revalidatePath(
-      "/admin/inputs"
+      `/models/${input.modelId}/inputs`
     );
 
 
@@ -115,9 +127,12 @@ export async function createInputAction(
 
 
     return {
+
       success: false,
+
       error:
-        "Unable to create input definition",
+        "Unable to create input definition.",
+
     };
 
   }
@@ -129,6 +144,10 @@ export async function updateInputAction(
   id: string,
   formData: FormData
 ) {
+
+  const user =
+    await requireCurrentUser();
+
 
   const data =
     formDataToInputDefinition(
@@ -150,8 +169,12 @@ export async function updateInputAction(
     );
 
     return {
+
       success: false,
-      error: result.error.flatten(),
+
+      error:
+        result.error.flatten(),
+
     };
 
   }
@@ -159,18 +182,16 @@ export async function updateInputAction(
 
   try {
 
-    await updateInputDefinition(
-      id,
-      result.data
-    );
+    const input =
+      await updateInputDefinition(
+        id,
+        result.data,
+        user.id
+      );
 
 
     revalidatePath(
-      `/models/${result.data.modelId}/inputs`
-    );
-
-    revalidatePath(
-      "/admin/inputs"
+      `/models/${input.modelId}/inputs`
     );
 
 
@@ -187,9 +208,12 @@ export async function updateInputAction(
 
 
     return {
+
       success: false,
+
       error:
-        "Unable to update input definition",
+        "Unable to update input definition.",
+
     };
 
   }
@@ -201,20 +225,21 @@ export async function deactivateInputAction(
   id: string
 ) {
 
+  const user =
+    await requireCurrentUser();
+
+
   try {
 
-    await deactivateInputDefinition(
-      id
-    );
+    const input =
+      await deactivateInputDefinition(
+        id,
+        user.id
+      );
 
 
     revalidatePath(
-      "/admin/inputs"
-    );
-
-    revalidatePath(
-      "/models",
-      "page"
+      `/models/${input.modelId}/inputs`
     );
 
 
@@ -231,9 +256,12 @@ export async function deactivateInputAction(
 
 
     return {
+
       success: false,
+
       error:
-        "Unable to deactivate input definition",
+        "Unable to deactivate input definition.",
+
     };
 
   }

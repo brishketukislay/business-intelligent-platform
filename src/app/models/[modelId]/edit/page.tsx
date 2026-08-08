@@ -12,6 +12,10 @@ import {
   ModelEditForm,
 } from "@/features/models/components/model-edit-form";
 
+import {
+  requireCurrentUser,
+} from "@/lib/current-user";
+
 
 type ModelEditPageProps = {
   params: Promise<{
@@ -34,9 +38,14 @@ export default async function ModelEditPage({
   }
 
 
+  const user =
+    await requireCurrentUser();
+
+
   const model =
     await getBusinessModelById(
-      modelId
+      modelId,
+      user.id
     );
 
 

@@ -10,11 +10,21 @@ import {
   ModelForm,
 } from "@/features/models/components/model-form";
 
+import {
+  requireCurrentUser,
+} from "@/lib/current-user";
+
 
 export default async function ModelsPage() {
 
+  const user =
+    await requireCurrentUser();
+
+
   const models =
-    await getBusinessModels();
+    await getBusinessModels(
+      user.id
+    );
 
 
   return (

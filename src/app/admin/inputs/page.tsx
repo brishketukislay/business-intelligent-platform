@@ -1,5 +1,6 @@
+//  getDefaultBusinessModel,
 import {
-  getDefaultBusinessModel,
+
   getInputDefinitions,
 } from "@/features/inputs/services/input-service";
 
@@ -20,111 +21,114 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { redirect } from "next/navigation";
 
-
-
-export default async function AdminInputsPage() {
-
-
-  const model =
-    await getDefaultBusinessModel();
-
-
-
-  if (!model) {
-
-    return (
-      <div>
-        No active business model found.
-      </div>
-    );
-
-  }
-
-
-
-  const inputs =
-    await getInputDefinitions(
-      model.id
-    );
-
-
-
-  return (
-
-    <div className="space-y-6">
-
-
-      <div>
-
-        <h1 className="text-2xl font-semibold">
-          Input Management
-        </h1>
-
-
-        <p className="text-muted-foreground">
-
-          Configure inputs for:
-          {" "}
-          {model.name}
-
-        </p>
-
-      </div>
-
-
-
-      <Card>
-
-        <CardHeader>
-
-          <CardTitle>
-            Add Input Definition
-          </CardTitle>
-
-        </CardHeader>
-
-
-        <CardContent>
-
-          <InputForm
-            modelId={model.id}
-          />
-
-        </CardContent>
-
-
-      </Card>
-
-
-
-
-      <Card>
-
-        <CardHeader>
-
-          <CardTitle>
-            Existing Inputs
-          </CardTitle>
-
-        </CardHeader>
-
-
-        <CardContent>
-
-          <InputTable
-            inputs={inputs}
-          />
-
-        </CardContent>
-
-
-      </Card>
-
-
-
-    </div>
-
-  );
-
+export default function AdminInputsPage() {
+redirect("/models");
 }
+
+// export default async function AdminInputsPage() {
+
+
+//   const model =
+//     await getDefaultBusinessModel();
+
+
+
+//   if (!model) {
+
+//     return (
+//       <div>
+//         No active business model found.
+//       </div>
+//     );
+
+//   }
+
+
+
+//   const inputs =
+//     await getInputDefinitions(
+//       model.id,
+//     );
+
+
+
+//   return (
+
+//     <div className="space-y-6">
+
+
+//       <div>
+
+//         <h1 className="text-2xl font-semibold">
+//           Input Management
+//         </h1>
+
+
+//         <p className="text-muted-foreground">
+
+//           Configure inputs for:
+//           {" "}
+//           {model.name}
+
+//         </p>
+
+//       </div>
+
+
+
+//       <Card>
+
+//         <CardHeader>
+
+//           <CardTitle>
+//             Add Input Definition
+//           </CardTitle>
+
+//         </CardHeader>
+
+
+//         <CardContent>
+
+//           <InputForm
+//             modelId={model.id}
+//           />
+
+//         </CardContent>
+
+
+//       </Card>
+
+
+
+
+//       <Card>
+
+//         <CardHeader>
+
+//           <CardTitle>
+//             Existing Inputs
+//           </CardTitle>
+
+//         </CardHeader>
+
+
+//         <CardContent>
+
+//           <InputTable
+//             inputs={inputs}
+//           />
+
+//         </CardContent>
+
+
+//       </Card>
+
+
+
+//     </div>
+
+//   );
+
+// }

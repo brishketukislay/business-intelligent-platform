@@ -7,9 +7,15 @@ import type {
 } from "../schemas/model-schema";
 
 
-export async function getBusinessModels() {
+export async function getBusinessModels(
+  userId: string
+) {
 
   return prisma.businessModel.findMany({
+
+    where: {
+      createdBy: userId,
+    },
 
     orderBy: {
       createdAt: "desc",
@@ -21,13 +27,15 @@ export async function getBusinessModels() {
 
 
 export async function getBusinessModelById(
-  id: string
+  id: string,
+  userId: string
 ) {
 
-  return prisma.businessModel.findUnique({
+  return prisma.businessModel.findFirst({
 
     where: {
       id,
+      createdBy: userId,
     },
 
   });
@@ -62,13 +70,15 @@ export async function createBusinessModel(
 
 export async function updateBusinessModel(
   id: string,
-  data: BusinessModelInput
+  data: BusinessModelInput,
+  userId: string
 ) {
 
-  return prisma.businessModel.update({
+  return prisma.businessModel.updateMany({
 
     where: {
       id,
+      createdBy: userId,
     },
 
     data: {
@@ -88,13 +98,15 @@ export async function updateBusinessModel(
 
 
 export async function deactivateBusinessModel(
-  id: string
+  id: string,
+  userId: string
 ) {
 
-  return prisma.businessModel.update({
+  return prisma.businessModel.updateMany({
 
     where: {
       id,
+      createdBy: userId,
     },
 
     data: {

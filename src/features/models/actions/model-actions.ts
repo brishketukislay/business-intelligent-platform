@@ -115,7 +115,8 @@ export async function updateBusinessModelAction(
   formData: FormData
 ) {
 
-  await requireCurrentUser();
+  const user =
+    await requireCurrentUser();
 
 
   const result =
@@ -140,10 +141,26 @@ export async function updateBusinessModelAction(
 
   try {
 
-    await updateBusinessModel(
-      id,
-      result.data
-    );
+    const updated =
+      await updateBusinessModel(
+        id,
+        result.data,
+        user.id
+      );
+
+
+    if (updated.count === 0) {
+
+      return {
+
+        success: false,
+
+        error:
+          "Business model not found or access denied.",
+
+      };
+
+    }
 
 
     revalidatePath(
@@ -185,14 +202,31 @@ export async function deactivateBusinessModelAction(
   id: string
 ) {
 
-  await requireCurrentUser();
+  const user =
+    await requireCurrentUser();
 
 
   try {
 
-    await deactivateBusinessModel(
-      id
-    );
+    const updated =
+      await deactivateBusinessModel(
+        id,
+        user.id
+      );
+
+
+    if (updated.count === 0) {
+
+      return {
+
+        success: false,
+
+        error:
+          "Business model not found or access denied.",
+
+      };
+
+    }
 
 
     revalidatePath(
@@ -228,3 +262,4 @@ export async function deactivateBusinessModelAction(
   }
 
 }
+
