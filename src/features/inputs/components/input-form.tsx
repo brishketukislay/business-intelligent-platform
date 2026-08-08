@@ -34,7 +34,9 @@ export function InputForm({
       const result = await createInputAction(formData);
 
       if (result.success) {
-        setMessage("Input definition created successfully.");
+          setMessage("Input definition created successfully.");
+          window.location.reload();
+      return;
       } else {
         setMessage("Unable to create input definition.");
       }

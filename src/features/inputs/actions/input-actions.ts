@@ -14,7 +14,6 @@ import {
 } from "../services/input-service";
 
 
-
 function formDataToInputDefinition(
   formData: FormData
 ): InputDefinitionInput {
@@ -56,7 +55,6 @@ function formDataToInputDefinition(
 }
 
 
-
 export async function createInputAction(
   formData: FormData
 ) {
@@ -96,6 +94,10 @@ export async function createInputAction(
 
 
     revalidatePath(
+      `/models/${result.data.modelId}/inputs`
+    );
+
+    revalidatePath(
       "/admin/inputs"
     );
 
@@ -121,7 +123,6 @@ export async function createInputAction(
   }
 
 }
-
 
 
 export async function updateInputAction(
@@ -165,6 +166,10 @@ export async function updateInputAction(
 
 
     revalidatePath(
+      `/models/${result.data.modelId}/inputs`
+    );
+
+    revalidatePath(
       "/admin/inputs"
     );
 
@@ -192,7 +197,6 @@ export async function updateInputAction(
 }
 
 
-
 export async function deactivateInputAction(
   id: string
 ) {
@@ -206,6 +210,11 @@ export async function deactivateInputAction(
 
     revalidatePath(
       "/admin/inputs"
+    );
+
+    revalidatePath(
+      "/models",
+      "page"
     );
 
 

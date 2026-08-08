@@ -88,18 +88,12 @@ export function ModelList({
 
             <div className="mt-6">
 
-              <Button
-                variant="outline"
-                className="w-full"
+              <Link
+                href={`/models/${model.id}`}
+                className="inline-flex h-9 w-full items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
               >
-
-                <Link
-                  href={`/models/${model.id}`}
-                >
-                  Open Model
-                </Link>
-
-              </Button>
+                Open Model
+              </Link>
 
             </div>
 
