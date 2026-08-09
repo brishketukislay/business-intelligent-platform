@@ -149,17 +149,21 @@ export default async function ModelDetailPage({
 
 
 
-        <div className="rounded-lg border bg-background p-6 shadow-sm">
+<Link
+  href={`/models/${model.id}/scenarios`}
+  className="rounded-lg border bg-background p-6 shadow-sm transition-colors hover:bg-muted/50"
+>
 
-          <h2 className="font-semibold">
-            Scenarios
-          </h2>
+  <h2 className="font-semibold">
+    Scenarios
+  </h2>
 
-          <p className="mt-2 text-sm text-muted-foreground">
-            Scenario configuration will be added in a future phase.
-          </p>
+  <p className="mt-2 text-sm text-muted-foreground">
+    Create alternative assumptions and compare outcomes.
+  </p>
 
-        </div>
+</Link>
+
 
       </div>
 

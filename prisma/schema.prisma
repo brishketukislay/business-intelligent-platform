@@ -23,6 +23,8 @@ model User {
   workingValues WorkingValue[]
 
   savedModels SavedModel[]
+
+  scenarios Scenario[]
 }
 
 model BusinessModel {
@@ -47,6 +49,8 @@ model BusinessModel {
   savedValues SavedModelValue[]
 
   savedModels SavedModel[]
+
+  scenarios Scenario[]
 }
 
 model InputDefinition {
@@ -74,8 +78,11 @@ model InputDefinition {
 
   savedValues SavedModelValue[]
 
+  scenarioValues ScenarioValue[]
+
   @@unique([modelId, key])
 }
+
 model MetricDefinition {
   id String @id @default(cuid())
 
@@ -141,7 +148,6 @@ model SavedModel {
   @@index([createdBy, createdAt])
 }
 
-
 model SavedModelValue {
   id String @id @default(cuid())
 
@@ -162,4 +168,48 @@ model SavedModelValue {
   savedModel SavedModel? @relation(fields: [savedModelId], references: [id], onDelete: Cascade)
 
   @@index([savedModelId])
+}
+
+model Scenario {
+  id String @id @default(cuid())
+
+  modelId String
+
+  createdBy String
+
+  name String
+
+  description String?
+
+  status String @default("ACTIVE")
+
+  createdAt DateTime @default(now())
+
+  model BusinessModel @relation(fields: [modelId], references: [id], onDelete: Cascade)
+
+  creator User @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+
+  values ScenarioValue[]
+
+  @@index([modelId, createdAt])
+  @@index([createdBy, createdAt])
+}
+
+model ScenarioValue {
+  id String @id @default(cuid())
+
+  scenarioId String
+
+  inputId String
+
+  value String
+
+  updatedAt DateTime @updatedAt
+
+  scenario Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+
+  input InputDefinition @relation(fields: [inputId], references: [id], onDelete: Cascade)
+
+  @@unique([scenarioId, inputId])
+  @@index([scenarioId])
 }
