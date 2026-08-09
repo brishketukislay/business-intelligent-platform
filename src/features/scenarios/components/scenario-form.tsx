@@ -5,6 +5,10 @@ import {
 } from "react";
 
 import {
+  useRouter,
+} from "next/navigation";
+
+import {
   createScenarioAction,
 } from "../actions/scenario-actions";
 
@@ -18,6 +22,10 @@ export function ScenarioForm({
 }: {
   modelId: string;
 }) {
+
+  const router =
+    useRouter();
+
 
   const [
     name,
@@ -78,9 +86,34 @@ export function ScenarioForm({
       }
 
 
+      if (result.scenarioId) {
+
+        router.push(
+          `/models/${modelId}/scenarios/${result.scenarioId}`
+        );
+
+        return;
+
+      }
+
+
+      router.refresh();
+
       setName("");
 
       setDescription("");
+
+    } catch (error) {
+
+      console.error(
+        "Failed to create scenario:",
+        error
+      );
+
+
+      setError(
+        "An unexpected error occurred."
+      );
 
     } finally {
 
@@ -106,6 +139,7 @@ export function ScenarioForm({
         >
           Scenario Name
         </label>
+
 
         <input
           id="scenario-name"
@@ -144,6 +178,7 @@ export function ScenarioForm({
         >
           Description
         </label>
+
 
         <textarea
           id="scenario-description"

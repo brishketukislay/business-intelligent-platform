@@ -17,20 +17,16 @@ import {
 } from "@/features/scenarios/services/scenario-service";
 
 import {
-  getInputDefinitions,
-} from "@/features/inputs/services/input-service";
-
-import {
-  getScenarioValues,
-} from "@/features/scenarios/services/scenario-value-service";
-
-import {
-  ScenarioInputTable,
-} from "@/features/scenarios/components/scenario-input-table";
+  prisma,
+} from "@/lib/prisma";
 
 import {
   Badge,
 } from "@/components/ui/badge";
+
+import {
+  ScenarioInputs,
+} from "@/features/scenarios/components/scenario-inputs";
 
 import {
   calculateScenarioMetrics,
@@ -102,24 +98,77 @@ export default async function ScenarioDetailPage({
   }
 
 
-  const inputs =
-    await getInputDefinitions(
-      modelId,
-      user.id
-    );
-
-
-  const scenarioValues =
-    await getScenarioValues(
+  const calculatedMetrics =
+    await calculateScenarioMetrics(
       scenarioId,
       user.id
     );
 
-    const calculatedMetrics =
-  await calculateScenarioMetrics(
-    scenarioId,
-    user.id
-  );
+
+  /*
+   * Get all active inputs for the model.
+   *
+   * A scenario may not have a ScenarioValue row yet for
+   * every input, so we merge the model inputs with the
+   * scenario's existing values.
+   */
+
+  const inputs =
+    await prisma.inputDefinition.findMany({
+
+      where: {
+
+        modelId,
+
+        status: "ACTIVE",
+
+      },
+
+      orderBy: {
+
+        createdAt: "asc",
+
+      },
+
+    });
+
+
+  const scenarioValueByInputId =
+    new Map(
+      scenario.values.map(
+        (scenarioValue) => [
+          scenarioValue.inputId,
+          scenarioValue.value,
+        ]
+      )
+    );
+
+
+  const scenarioInputs =
+    inputs.map(
+      (input) => ({
+
+        id: input.id,
+
+        modelId: input.modelId,
+
+        name: input.name,
+
+        key: input.key,
+
+        type: input.type,
+
+        unit: input.unit,
+
+        category: input.category,
+
+        value:
+          scenarioValueByInputId.get(
+            input.id
+          ) ?? "",
+
+      })
+    );
 
 
   return (
@@ -141,9 +190,11 @@ export default async function ScenarioDetailPage({
             ← Back to Scenarios
           </Link>
 
+
           <span className="text-muted-foreground">
             /
           </span>
+
 
           <Link
             href={`/models/${model.id}`}
@@ -169,6 +220,7 @@ export default async function ScenarioDetailPage({
                 {scenario.name}
               </h1>
 
+
               <Badge
                 variant={
                   scenario.status === "ACTIVE"
@@ -182,11 +234,15 @@ export default async function ScenarioDetailPage({
             </div>
 
 
-            <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-
+            <p className="mt-1 text-sm text-muted-foreground">
               {scenario.description ??
                 "No description provided."}
+            </p>
 
+
+            <p className="mt-2 text-xs text-muted-foreground">
+              Created{" "}
+              {scenario.createdAt.toLocaleString()}
             </p>
 
           </div>
@@ -204,32 +260,35 @@ export default async function ScenarioDetailPage({
             Scenario Inputs
           </h2>
 
+
           <p className="mt-1 text-sm text-muted-foreground">
-            Enter values specific to this scenario. These values do not change your working values.
+            Configure the input values used by this scenario.
           </p>
 
         </div>
 
 
-        <div className="p-6">
+        <div className="p-0">
 
-          <ScenarioInputTable
-            modelId={model.id}
+          <ScenarioInputs
             scenarioId={scenario.id}
-            inputs={inputs}
-            values={scenarioValues}
+            modelId={model.id}
+            inputs={scenarioInputs}
           />
 
         </div>
 
       </div>
-            <div className="rounded-lg border bg-background">
+
+
+      <div className="rounded-lg border bg-background">
 
         <div className="border-b px-6 py-4">
 
           <h2 className="font-semibold">
             Calculated Metrics
           </h2>
+
 
           <p className="mt-1 text-sm text-muted-foreground">
             Metrics calculated using the values stored in this scenario.
@@ -271,7 +330,7 @@ export default async function ScenarioDetailPage({
             hover:text-accent-foreground
           "
         >
-          All Scenarios
+          Back to Scenarios
         </Link>
 
 
@@ -283,19 +342,16 @@ export default async function ScenarioDetailPage({
             items-center
             justify-center
             rounded-md
-            border
-            border-input
-            bg-background
+            bg-primary
             px-4
             py-2
             text-sm
             font-medium
-            shadow-sm
-            hover:bg-accent
-            hover:text-accent-foreground
+            text-primary-foreground
+            hover:bg-primary/90
           "
         >
-          Working Values
+          View Working Inputs
         </Link>
 
       </div>

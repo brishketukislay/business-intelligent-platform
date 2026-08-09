@@ -3,7 +3,7 @@ import {
 } from "@/lib/prisma";
 
 
-export async function getScenarioValues(
+export async function getScenarioInputs(
   scenarioId: string,
   userId: string
 ) {
@@ -23,6 +23,8 @@ export async function getScenarioValues(
 
         id: true,
 
+        modelId: true,
+
       },
 
     });
@@ -37,37 +39,61 @@ export async function getScenarioValues(
   }
 
 
-  return prisma.scenarioValue.findMany({
+  const inputs =
+    await prisma.inputDefinition.findMany({
 
-    where: {
+      where: {
 
-      scenarioId,
+        modelId: scenario.modelId,
 
-      scenario: {
-        createdBy: userId,
-      },
-
-      input: {
         status: "ACTIVE",
+
       },
 
-    },
+      include: {
 
-    include: {
+        scenarioValues: {
 
-      input: true,
+          where: {
+            scenarioId,
+          },
 
-    },
+        },
 
-    orderBy: {
+      },
 
-      input: {
+      orderBy: {
+
         createdAt: "asc",
+
       },
 
-    },
+    });
 
-  });
+
+  return inputs.map(
+    (input) => ({
+
+      id: input.id,
+
+      modelId: input.modelId,
+
+      name: input.name,
+
+      key: input.key,
+
+      type: input.type,
+
+      unit: input.unit,
+
+      category: input.category,
+
+      value:
+        input.scenarioValues[0]?.value ??
+        "",
+
+    })
+  );
 
 }
 
@@ -79,6 +105,37 @@ export async function upsertScenarioValue(
   userId: string
 ) {
 
+  const scenario =
+    await prisma.scenario.findFirst({
+
+      where: {
+
+        id: scenarioId,
+
+        createdBy: userId,
+
+      },
+
+      select: {
+
+        id: true,
+
+        modelId: true,
+
+      },
+
+    });
+
+
+  if (!scenario) {
+
+    throw new Error(
+      "Scenario not found or access denied."
+    );
+
+  }
+
+
   const input =
     await prisma.inputDefinition.findFirst({
 
@@ -86,23 +143,9 @@ export async function upsertScenarioValue(
 
         id: inputId,
 
+        modelId: scenario.modelId,
+
         status: "ACTIVE",
-
-        model: {
-
-          scenarios: {
-
-            some: {
-
-              id: scenarioId,
-
-              createdBy: userId,
-
-            },
-
-          },
-
-        },
 
       },
 

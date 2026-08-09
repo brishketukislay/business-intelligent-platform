@@ -48,12 +48,19 @@ export async function createScenarioAction(
 
   try {
 
-    await createScenario(
-      modelId,
-      user.id,
-      cleanName,
-      cleanDescription
-    );
+    // await createScenario(
+    //   modelId,
+    //   user.id,
+    //   cleanName,
+    //   cleanDescription
+    // );
+const scenario =
+  await createScenario(
+    modelId,
+    user.id,
+    cleanName,
+    cleanDescription
+  );
 
 
     revalidatePath(
@@ -65,11 +72,15 @@ export async function createScenarioAction(
     );
 
 
-    return {
+return {
 
-      success: true,
+  success: true,
 
-    };
+  scenarioId:
+    scenario.id,
+
+};
+
 
   } catch (error) {
 
