@@ -42,6 +42,8 @@ model BusinessModel {
 
   inputs InputDefinition[]
 
+  metrics MetricDefinition[]
+
   savedValues SavedModelValue[]
 
   savedModels SavedModel[]
@@ -71,6 +73,31 @@ model InputDefinition {
   workingValues WorkingValue[]
 
   savedValues SavedModelValue[]
+
+  @@unique([modelId, key])
+}
+model MetricDefinition {
+  id String @id @default(cuid())
+
+  modelId String
+
+  name String
+
+  key String
+
+  type String
+
+  unit String?
+
+  category String?
+
+  formula String
+
+  status String @default("ACTIVE")
+
+  createdAt DateTime @default(now())
+
+  model BusinessModel @relation(fields: [modelId], references: [id], onDelete: Cascade)
 
   @@unique([modelId, key])
 }

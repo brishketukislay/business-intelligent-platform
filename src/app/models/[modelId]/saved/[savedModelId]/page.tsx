@@ -13,8 +13,17 @@ getBusinessModelById,
 } from "@/features/models/services/model-service";
 
 import {
-prisma,
-} from "@/lib/prisma";
+getSavedModels,
+} from "@/features/saved-values/services/saved-value-service";
+
+import {
+  calculateSavedModelMetrics,
+} from "@/features/metrics/services/metric-calculation-service";
+
+import {
+  MetricResults,
+} from "@/features/metrics/components/metric-results";
+
 
 import {
 Badge,
@@ -57,86 +66,93 @@ if (model.createdBy !== user.id) {
 notFound();
 }
 
+const savedModels =
+await getSavedModels(
+modelId,
+user.id
+);
+
 const savedModel =
-await prisma.savedModel.findFirst({
-
-  where: {
-
-    id: savedModelId,
-
-    modelId,
-
-    createdBy: user.id,
-
-  },
-
-  include: {
-
-    values: {
-
-      include: {
-        input: true,
-      },
-
-      orderBy: {
-        input: {
-          createdAt: "asc",
-        },
-      },
-
-    },
-
-  },
-
-});
-
+savedModels.find(
+(item) =>
+item.id === savedModelId
+);
 
 if (!savedModel) {
 notFound();
 }
 
+const calculatedMetrics =
+  await calculateSavedModelMetrics(
+    savedModelId,
+    user.id
+  );
+
+
 return (
 
 <div className="space-y-8">
 
-  <div className="space-y-3">
+  <div className="space-y-4">
 
-    <Link
-      href={`/models/${model.id}/saved`}
-      className="
-        text-sm
-        text-muted-foreground
-        hover:text-foreground
-      "
-    >
-      ← Back to Saved Models
-    </Link>
+    <div className="flex flex-wrap items-center gap-3">
+
+      <Link
+        href={`/models/${model.id}/saved`}
+        className="
+          text-sm
+          text-muted-foreground
+          hover:text-foreground
+        "
+      >
+        ← Back to Saved Models
+      </Link>
+
+      <span className="text-muted-foreground">
+        /
+      </span>
+
+      <Link
+        href={`/models/${model.id}`}
+        className="
+          text-sm
+          text-muted-foreground
+          hover:text-foreground
+        "
+      >
+        {model.name}
+      </Link>
+
+    </div>
 
 
     <div className="flex items-start justify-between gap-6">
 
       <div>
 
-        <div className="flex items-center gap-3">
+        <h1 className="text-2xl font-semibold tracking-tight">
+          {savedModel.name}
+        </h1>
 
-          <h1 className="text-2xl font-semibold tracking-tight">
-            {savedModel.name}
-          </h1>
-
-          <Badge variant="secondary">
-            Snapshot
-          </Badge>
-
-        </div>
-
-
-        <p className="mt-2 text-sm text-muted-foreground">
-          {model.name}
-          {" · "}
+        <p className="mt-1 text-sm text-muted-foreground">
+          Saved snapshot created{" "}
           {savedModel.createdAt.toLocaleString()}
         </p>
 
       </div>
+
+
+      <Badge variant="secondary">
+
+        {savedModel.values.length}
+
+        {" "}
+
+        {savedModel.values.length === 1
+          ? "value"
+          : "values"}
+
+      </Badge>
 
     </div>
 
@@ -152,7 +168,7 @@ return (
       </h2>
 
       <p className="mt-1 text-sm text-muted-foreground">
-        These values were captured when this snapshot was saved.
+        Read-only values captured in this snapshot.
       </p>
 
     </div>
@@ -161,7 +177,7 @@ return (
     {savedModel.values.length === 0 ? (
 
       <div className="p-6 text-sm text-muted-foreground">
-        This snapshot contains no values.
+        This saved model contains no values.
       </div>
 
     ) : (
@@ -173,14 +189,7 @@ return (
 
             <div
               key={savedValue.id}
-              className="
-                flex
-                items-center
-                justify-between
-                gap-6
-                px-6
-                py-4
-              "
+              className="grid gap-4 px-6 py-5 md:grid-cols-[1fr_1fr_auto]"
             >
 
               <div>
@@ -191,18 +200,18 @@ return (
 
                 <p className="mt-1 text-xs text-muted-foreground">
                   {savedValue.input.key}
-
-                  {savedValue.input.category
-                    ? ` · ${savedValue.input.category}`
-                    : ""}
                 </p>
 
               </div>
 
 
-              <div className="text-right">
+              <div>
 
-                <p className="font-semibold">
+                <p className="text-xs text-muted-foreground">
+                  Value
+                </p>
+
+                <p className="mt-1 font-medium">
                   {savedValue.value}
 
                   {savedValue.input.unit
@@ -211,9 +220,14 @@ return (
 
                 </p>
 
-                <p className="mt-1 text-xs text-muted-foreground">
+              </div>
+
+
+              <div className="flex items-start md:justify-end">
+
+                <Badge variant="outline">
                   {savedValue.input.type}
-                </p>
+                </Badge>
 
               </div>
 
@@ -227,9 +241,32 @@ return (
     )}
 
   </div>
+<div className="rounded-lg border bg-background">
+
+  <div className="border-b px-6 py-4">
+
+    <h2 className="font-semibold">
+      Calculated Metrics
+    </h2>
+
+    <p className="mt-1 text-sm text-muted-foreground">
+      Metrics calculated using the values stored in this snapshot.
+    </p>
+
+  </div>
+
+  <div className="p-6">
+
+    <MetricResults
+      metrics={calculatedMetrics}
+    />
+
+  </div>
+
+</div>
 
 
-  <div>
+  <div className="flex flex-wrap gap-3">
 
     <Link
       href={`/models/${model.id}/inputs`}
@@ -251,7 +288,28 @@ return (
         hover:text-accent-foreground
       "
     >
-      Back to Working Values
+      Back to Inputs
+    </Link>
+
+
+    <Link
+      href={`/models/${model.id}/metrics`}
+      className="
+        inline-flex
+        h-9
+        items-center
+        justify-center
+        rounded-md
+        bg-primary
+        px-4
+        py-2
+        text-sm
+        font-medium
+        text-primary-foreground
+        hover:bg-primary/90
+      "
+    >
+      View Metrics
     </Link>
 
   </div>

@@ -132,17 +132,21 @@ export default async function ModelDetailPage({
 </Link>
 
 
-        <div className="rounded-lg border bg-background p-6 shadow-sm">
+<Link
+  href={`/models/${model.id}/metrics`}
+  className="rounded-lg border bg-background p-6 shadow-sm transition-colors hover:bg-muted/50"
+>
 
-          <h2 className="font-semibold">
-            Metrics
-          </h2>
+  <h2 className="font-semibold">
+    Metrics
+  </h2>
 
-          <p className="mt-2 text-sm text-muted-foreground">
-            Metric configuration will be added in a future phase.
-          </p>
+  <p className="mt-2 text-sm text-muted-foreground">
+    Configure calculated metrics for this model.
+  </p>
 
-        </div>
+</Link>
+
 
 
         <div className="rounded-lg border bg-background p-6 shadow-sm">
