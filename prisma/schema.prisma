@@ -21,6 +21,8 @@ model User {
   businessModels BusinessModel[]
 
   workingValues WorkingValue[]
+
+  savedModels SavedModel[]
 }
 
 model BusinessModel {
@@ -41,6 +43,8 @@ model BusinessModel {
   inputs InputDefinition[]
 
   savedValues SavedModelValue[]
+
+  savedModels SavedModel[]
 }
 
 model InputDefinition {
@@ -89,12 +93,36 @@ model WorkingValue {
   @@unique([userId, inputId])
 }
 
+model SavedModel {
+  id String @id @default(cuid())
+
+  modelId String
+
+  createdBy String
+
+  name String
+
+  createdAt DateTime @default(now())
+
+  model BusinessModel @relation(fields: [modelId], references: [id], onDelete: Cascade)
+
+  creator User @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+
+  values SavedModelValue[]
+
+  @@index([modelId, createdAt])
+  @@index([createdBy, createdAt])
+}
+
+
 model SavedModelValue {
   id String @id @default(cuid())
 
   modelId String
 
   inputId String
+
+  savedModelId String?
 
   value String
 
@@ -103,4 +131,8 @@ model SavedModelValue {
   model BusinessModel @relation(fields: [modelId], references: [id], onDelete: Cascade)
 
   input InputDefinition @relation(fields: [inputId], references: [id], onDelete: Cascade)
+
+  savedModel SavedModel? @relation(fields: [savedModelId], references: [id], onDelete: Cascade)
+
+  @@index([savedModelId])
 }

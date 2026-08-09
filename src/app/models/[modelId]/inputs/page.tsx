@@ -3,6 +3,10 @@ import Link from "next/link";
 import {
 notFound,
 } from "next/navigation";
+import {
+  SaveModelValuesButton,
+} from "@/features/saved-values/components/save-model-values-button";
+
 
 import {
 requireCurrentUser,
@@ -178,14 +182,22 @@ return (
     </div>
 
 
-    <div className="p-6">
+ <div className="p-6">
 
-      <WorkingValuesForm
-        modelId={model.id}
-        inputs={workingInputs}
-      />
+  <WorkingValuesForm
+    modelId={model.id}
+    inputs={workingInputs}
+  />
 
-    </div>
+  <div className="mt-6 border-t pt-6">
+
+    <SaveModelValuesButton
+      modelId={model.id}
+    />
+
+  </div>
+
+</div>
 
   </div>
 
