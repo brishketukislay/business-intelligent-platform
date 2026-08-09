@@ -37,6 +37,46 @@ orderBy: {
 });
 
 }
+export async function getSavedModelById(
+  modelId: string,
+  savedModelId: string,
+  userId: string
+) {
+
+  return prisma.savedModel.findFirst({
+
+    where: {
+
+      id: savedModelId,
+
+      modelId,
+
+      createdBy: userId,
+
+    },
+
+    include: {
+
+      values: {
+
+        include: {
+          input: true,
+        },
+
+        orderBy: {
+          input: {
+            createdAt: "asc",
+          },
+        },
+
+      },
+
+    },
+
+  });
+
+}
+
 
 export async function saveWorkingValues(
 modelId: string,
