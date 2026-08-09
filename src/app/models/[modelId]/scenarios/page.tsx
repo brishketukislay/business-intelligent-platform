@@ -24,6 +24,11 @@ import {
   ScenarioList,
 } from "@/features/scenarios/components/scenario-list";
 
+import {
+  ScenarioComparison,
+} from "@/features/scenarios/components/scenario-comparison";
+
+
 
 type ModelScenariosPageProps = {
   params: Promise<{
@@ -152,6 +157,11 @@ export default async function ModelScenariosPage({
           modelId={model.id}
           scenarios={scenarios}
         />
+
+        <ScenarioComparison
+         modelId={model.id}
+        />
+
 
       </div>
 

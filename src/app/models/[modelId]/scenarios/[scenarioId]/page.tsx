@@ -29,6 +29,11 @@ import {
 } from "@/features/scenarios/components/scenario-inputs";
 
 import {
+  ScenarioEditForm,
+} from "@/features/scenarios/components/scenario-edit-form";
+
+
+import {
   calculateScenarioMetrics,
 } from "@/features/scenarios/services/scenario-calculation-service";
 
@@ -109,7 +114,7 @@ export default async function ScenarioDetailPage({
    * Get all active inputs for the model.
    *
    * A scenario may not have a ScenarioValue row yet for
-   * every input, so we merge the model inputs with the
+   * every input, so merge the model inputs with the
    * scenario's existing values.
    */
 
@@ -289,7 +294,6 @@ export default async function ScenarioDetailPage({
             Calculated Metrics
           </h2>
 
-
           <p className="mt-1 text-sm text-muted-foreground">
             Metrics calculated using the values stored in this scenario.
           </p>
@@ -306,6 +310,17 @@ export default async function ScenarioDetailPage({
         </div>
 
       </div>
+
+
+      <ScenarioEditForm
+        modelId={model.id}
+        scenarioId={scenario.id}
+        initialName={scenario.name}
+        initialDescription={
+          scenario.description ?? ""
+        }
+        status={scenario.status}
+      />
 
 
       <div className="flex flex-wrap gap-3">
@@ -342,6 +357,30 @@ export default async function ScenarioDetailPage({
             items-center
             justify-center
             rounded-md
+            border
+            border-input
+            bg-background
+            px-4
+            py-2
+            text-sm
+            font-medium
+            shadow-sm
+            hover:bg-accent
+            hover:text-accent-foreground
+          "
+        >
+          View Working Inputs
+        </Link>
+
+
+        <Link
+          href={`/models/${model.id}/metrics`}
+          className="
+            inline-flex
+            h-9
+            items-center
+            justify-center
+            rounded-md
             bg-primary
             px-4
             py-2
@@ -351,7 +390,7 @@ export default async function ScenarioDetailPage({
             hover:bg-primary/90
           "
         >
-          View Working Inputs
+          View Metrics
         </Link>
 
       </div>
