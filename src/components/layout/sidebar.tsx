@@ -10,14 +10,17 @@ export function Sidebar() {
   return (
 
     <aside
-      className="
-        w-64
-        border-r
-        bg-white
-        min-h-screen
-        p-4
-      "
-    >
+  className="
+    hidden
+    min-h-screen
+    w-64
+    shrink-0
+    border-r
+    bg-white
+    p-4
+    md:block
+  "
+>
 
       <div
         className="
