@@ -1,56 +1,57 @@
 import { z } from "zod";
 
-import {
-  INPUT_TYPES,
-} from "../types";
+
+export const INPUT_SCOPES = [
+  "MODEL",
+  "PERIOD",
+] as const;
 
 
-export const inputDefinitionSchema =
-  z.object({
-
-    modelId: z
-      .string()
-      .min(1, "Model is required"),
-
-
-    name: z
-      .string()
-      .min(
-        2,
-        "Name must contain at least 2 characters"
-      ),
+export const INPUT_TYPES = [
+  "Number",
+  "Currency",
+  "Percentage",
+  "Text",
+] as const;
 
 
-    key: z
-      .string()
-      .min(
-        2,
-        "Key must contain at least 2 characters"
-      )
+export const inputDefinitionSchema = z.object({
+
+  modelId:
+    z.string().min(1),
+
+  name:
+    z.string()
+      .trim()
+      .min(1, "Input name is required."),
+
+  key:
+    z.string()
+      .trim()
+      .min(1, "Input key is required.")
       .regex(
         /^[a-z0-9_]+$/,
-        "Key must use lowercase letters, numbers and underscores only"
+        "Key can only contain lowercase letters, numbers and underscores."
       ),
 
+  type:
+    z.enum(INPUT_TYPES),
 
-    type: z.enum(
-      INPUT_TYPES
-    ),
-
-
-    unit: z
-      .string()
+  unit:
+    z.string()
+      .trim()
       .optional(),
 
-
-    category: z
-      .string()
+  category:
+    z.string()
+      .trim()
       .optional(),
 
-  });
+  scope:
+    z.enum(INPUT_SCOPES),
+
+});
 
 
 export type InputDefinitionInput =
-  z.infer<
-    typeof inputDefinitionSchema
-  >;
+  z.infer<typeof inputDefinitionSchema>;

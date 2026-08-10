@@ -17,13 +17,21 @@ export async function getScenarioInputs(
     await prisma.scenario.findUnique({
 
       where: {
-        id: scenarioId,
+        id:
+          scenarioId,
       },
 
       select: {
-        id: true,
-        modelId: true,
-        status: true,
+
+        id:
+          true,
+
+        modelId:
+          true,
+
+        status:
+          true,
+
       },
 
     });
@@ -67,8 +75,8 @@ export async function getScenarioInputs(
    * Load every active input belonging to the
    * scenario's model.
    *
-   * ScenarioValue contains the actual values
-   * for this scenario.
+   * The current scenario input API uses
+   * periodId: null for scalar values.
    */
   const inputs =
     await prisma.inputDefinition.findMany({
@@ -92,11 +100,15 @@ export async function getScenarioInputs(
             scenarioId:
               scenario.id,
 
+            periodId:
+              null,
+
           },
 
           select: {
 
-            value: true,
+            value:
+              true,
 
           },
 
@@ -263,36 +275,62 @@ export async function upsertScenarioValue(
 
 
   /*
-   * Save the value against the scenario.
+   * The current scenario API stores scalar
+   * values with periodId: null.
    *
-   * This means all users with access to the
-   * model see the same scenario value.
+   * The Prisma schema is now period-aware, so
+   * use findFirst/update/create instead of the
+   * old scenarioId_inputId compound key.
    */
-  return prisma.scenarioValue.upsert({
+  const existing =
+    await prisma.scenarioValue.findFirst({
 
-    where: {
-
-      scenarioId_inputId: {
+      where: {
 
         scenarioId,
 
         inputId,
 
+        periodId:
+          null,
+
       },
 
-    },
+    });
 
-    create: {
+
+  if (existing) {
+
+    return prisma.scenarioValue.update({
+
+      where: {
+
+        id:
+          existing.id,
+
+      },
+
+      data: {
+
+        value,
+
+      },
+
+    });
+
+  }
+
+
+  return prisma.scenarioValue.create({
+
+    data: {
 
       scenarioId,
 
       inputId,
 
-      value,
-
-    },
-
-    update: {
+      periodId:
+        null,
 
       value,
 

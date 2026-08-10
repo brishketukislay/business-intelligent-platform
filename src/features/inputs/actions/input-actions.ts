@@ -17,6 +17,7 @@ import {
   createInputDefinition,
   updateInputDefinition,
   deactivateInputDefinition,
+  upsertPeriodValue,
 } from "../services/input-service";
 
 
@@ -29,7 +30,7 @@ function formDataToInputDefinition(
     modelId:
       String(
         formData.get("modelId") ?? ""
-      ),
+      ).trim(),
 
     name:
       String(
@@ -45,6 +46,11 @@ function formDataToInputDefinition(
       String(
         formData.get("type") ?? "Number"
       ) as InputDefinitionInput["type"],
+
+    scope:
+      String(
+        formData.get("scope") ?? "MODEL"
+      ) as InputDefinitionInput["scope"],
 
     unit:
       String(
@@ -65,6 +71,12 @@ export async function createInputAction(
   formData: FormData
 ) {
 
+  console.log(
+    "CREATE INPUT FORM DATA:",
+    Object.fromEntries(formData.entries())
+  );
+
+
   const user =
     await requireCurrentUser();
 
@@ -73,6 +85,12 @@ export async function createInputAction(
     formDataToInputDefinition(
       formData
     );
+
+
+  console.log(
+    "CREATE INPUT DATA:",
+    data
+  );
 
 
   const result =
@@ -84,7 +102,7 @@ export async function createInputAction(
   if (!result.success) {
 
     console.error(
-      "Create input validation failed:",
+      "CREATE INPUT VALIDATION ERROR:",
       result.error.flatten()
     );
 
@@ -93,7 +111,7 @@ export async function createInputAction(
       success: false,
 
       error:
-        result.error.flatten(),
+        result.error.flatten().fieldErrors,
 
     };
 
@@ -102,6 +120,12 @@ export async function createInputAction(
 
   try {
 
+    console.log(
+      "CREATING INPUT:",
+      result.data
+    );
+
+
     const input =
       await createInputDefinition(
         result.data,
@@ -109,21 +133,46 @@ export async function createInputAction(
       );
 
 
+    console.log(
+      "INPUT CREATED:",
+      input
+    );
+
+
     revalidatePath(
       `/models/${input.modelId}/inputs`
+    );
+
+    revalidatePath(
+      `/models/${input.modelId}/edit`
     );
 
 
     return {
       success: true,
+      inputId: input.id,
     };
 
-  } catch (error) {
+  } catch (error: unknown) {
 
     console.error(
-      "Failed to create input definition:",
+      "CREATE INPUT DATABASE ERROR:",
       error
     );
+
+
+    if (
+      error &&
+      typeof error === "object" &&
+      "code" in error
+    ) {
+
+      console.error(
+        "PRISMA ERROR CODE:",
+        error.code
+      );
+
+    }
 
 
     return {
@@ -131,7 +180,9 @@ export async function createInputAction(
       success: false,
 
       error:
-        "Unable to create input definition.",
+        error instanceof Error
+          ? error.message
+          : "Unable to create input definition.",
 
     };
 
@@ -212,7 +263,9 @@ export async function updateInputAction(
       success: false,
 
       error:
-        "Unable to update input definition.",
+        error instanceof Error
+          ? error.message
+          : "Unable to update input definition.",
 
     };
 
@@ -260,7 +313,70 @@ export async function deactivateInputAction(
       success: false,
 
       error:
-        "Unable to deactivate input definition.",
+        error instanceof Error
+          ? error.message
+          : "Unable to deactivate input definition.",
+
+    };
+
+  }
+
+}
+
+
+export async function upsertPeriodValueAction(
+  modelId: string,
+  inputId: string,
+  periodId: string,
+  value: string
+) {
+
+  const user =
+    await requireCurrentUser();
+
+
+  try {
+
+    await upsertPeriodValue(
+      {
+        modelId,
+        inputId,
+        periodId,
+        value,
+      },
+      user.id
+    );
+
+
+    revalidatePath(
+      `/models/${modelId}/inputs`
+    );
+
+    revalidatePath(
+      `/models/${modelId}/metrics`
+    );
+
+
+    return {
+      success: true,
+    };
+
+  } catch (error) {
+
+    console.error(
+      "Failed to save period value:",
+      error
+    );
+
+
+    return {
+
+      success: false,
+
+      error:
+        error instanceof Error
+          ? error.message
+          : "Unable to save period value.",
 
     };
 

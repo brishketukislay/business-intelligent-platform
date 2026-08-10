@@ -2,6 +2,14 @@ export type FormulaVariables =
   Record<string, number>;
 
 
+export type FormulaFunction =
+  (...args: string[]) => number;
+
+
+export type FormulaFunctions =
+  Record<string, FormulaFunction>;
+
+
 type Token =
   | {
       type: "number";
@@ -20,6 +28,9 @@ type Token =
     }
   | {
       type: "rightParen";
+    }
+  | {
+      type: "comma";
     };
 
 
@@ -94,8 +105,11 @@ function tokenize(
 
 
       tokens.push({
+
         type: "number",
+
         value: number,
+
       });
 
       continue;
@@ -122,8 +136,11 @@ function tokenize(
 
 
       tokens.push({
+
         type: "identifier",
+
         value: identifier,
+
       });
 
       continue;
@@ -139,8 +156,11 @@ function tokenize(
     ) {
 
       tokens.push({
+
         type: "operator",
+
         value: character,
+
       });
 
       index++;
@@ -176,6 +196,19 @@ function tokenize(
     }
 
 
+    if (character === ",") {
+
+      tokens.push({
+        type: "comma",
+      });
+
+      index++;
+
+      continue;
+
+    }
+
+
     throw new Error(
       `Unsupported character "${character}" in formula.`
     );
@@ -195,6 +228,34 @@ function tokenize(
   return tokens;
 
 }
+
+
+/*
+ * Return only identifiers that need to be resolved
+ * as normal formula variables.
+ *
+ * Function arguments are intentionally excluded.
+ *
+ * Example:
+ *
+ * CUMULATIVE(actual_burnt_hours)
+ *
+ * returns:
+ *
+ * []
+ *
+ * Whereas:
+ *
+ * annual_target / 12
+ *
+ * returns:
+ *
+ * ["annual_target"]
+ *
+ * This is important because CUMULATIVE() receives
+ * the input/metric key as a string and resolves it
+ * itself.
+ */
 export function getFormulaIdentifiers(
   formula: string
 ): string[] {
@@ -202,17 +263,134 @@ export function getFormulaIdentifiers(
   const tokens =
     tokenize(formula);
 
+
+  const identifiers: string[] = [];
+
+
+  for (
+    let index = 0;
+    index < tokens.length;
+    index++
+  ) {
+
+    const token =
+      tokens[index];
+
+
+    if (
+      token.type !== "identifier"
+    ) {
+      continue;
+    }
+
+
+    const nextToken =
+      tokens[index + 1];
+
+
+    /*
+     * Function name.
+     *
+     * Example:
+     *
+     * CUMULATIVE(...)
+     *
+     * The function itself is not a variable.
+     */
+    if (
+      nextToken?.type === "leftParen"
+    ) {
+      continue;
+    }
+    /*
+     * If this identifier is inside a function
+     * argument list, do not treat it as a normal
+     * formula variable.
+     *
+     * Example:
+     *
+     * CUMULATIVE(actual_burnt_hours)
+     *
+     * actual_burnt_hours is resolved by the
+     * CUMULATIVE function, not calculateMetric().
+     */
+    let depth = 0;
+
+
+    for (
+      let previousIndex = index - 1;
+      previousIndex >= 0;
+      previousIndex--
+    ) {
+
+      const previousToken =
+        tokens[previousIndex];
+
+
+      if (
+        previousToken.type === "rightParen"
+      ) {
+
+        depth++;
+
+        continue;
+
+      }
+
+
+      if (
+        previousToken.type === "leftParen"
+      ) {
+
+        if (depth > 0) {
+
+          depth--;
+
+          continue;
+
+        }
+
+
+        const functionNameToken =
+          tokens[previousIndex - 1];
+
+
+        if (
+          functionNameToken?.type === "identifier"
+        ) {
+
+          /*
+           * This identifier is an argument to a
+           * function call.
+           */
+          depth = -1;
+
+        }
+
+        break;
+
+      }
+
+    }
+
+
+    if (depth === -1) {
+
+      continue;
+
+    }
+
+
+    identifiers.push(
+      token.value
+    );
+
+  }
+
+
   return Array.from(
     new Set(
-      tokens
-        .filter(
-          (token) =>
-            token.type === "identifier"
-        )
-        .map(
-          (token) =>
-            token.value
-        )
+      identifiers
     )
   );
 
@@ -226,7 +404,8 @@ class Parser {
 
   constructor(
     private readonly tokens: Token[],
-    private readonly variables: FormulaVariables
+    private readonly variables: FormulaVariables,
+    private readonly functions: FormulaFunctions
   ) {}
 
 
@@ -427,6 +606,26 @@ class Parser {
       this.position++;
 
 
+      const nextToken =
+        this.current();
+
+
+      /*
+       * Function call:
+       *
+       * CUMULATIVE(actual_burnt_hours)
+       */
+      if (
+        nextToken?.type === "leftParen"
+      ) {
+
+        return this.parseFunction(
+          token.value
+        );
+
+      }
+
+
       const value =
         this.variables[token.value];
 
@@ -497,12 +696,151 @@ class Parser {
 
   }
 
+
+  private parseFunction(
+    functionName: string
+  ): number {
+
+    const functionDefinition =
+      this.functions[
+        functionName
+      ];
+
+
+    if (!functionDefinition) {
+
+      throw new Error(
+        `Unknown formula function "${functionName}".`
+      );
+
+    }
+
+
+    const opening =
+      this.current();
+
+
+    if (
+      !opening ||
+      opening.type !== "leftParen"
+    ) {
+
+      throw new Error(
+        "Invalid function call."
+      );
+
+    }
+
+
+    this.position++;
+
+
+    const argumentsList: string[] = [];
+
+
+    while (true) {
+
+      const token =
+        this.current();
+
+
+      if (!token) {
+
+        throw new Error(
+          "Missing closing parenthesis in function."
+        );
+
+      }
+
+
+      if (
+        token.type === "rightParen"
+      ) {
+
+        this.position++;
+
+        break;
+
+      }
+
+
+      if (
+        token.type !== "identifier"
+      ) {
+
+        throw new Error(
+          "Formula functions currently require identifier arguments."
+        );
+
+      }
+
+
+      argumentsList.push(
+        token.value
+      );
+
+      this.position++;
+
+
+      const separator =
+        this.current();
+
+
+      if (
+        separator?.type === "comma"
+      ) {
+
+        this.position++;
+
+        continue;
+
+      }
+
+
+      if (
+        separator?.type === "rightParen"
+      ) {
+
+        this.position++;
+
+        break;
+
+      }
+
+
+      throw new Error(
+        "Expected comma or closing parenthesis in function."
+      );
+
+    }
+
+
+    const result =
+      functionDefinition(
+        ...argumentsList
+      );
+
+
+    if (!Number.isFinite(result)) {
+
+      throw new Error(
+        `Formula function "${functionName}" produced an invalid result.`
+      );
+
+    }
+
+
+    return result;
+
+  }
+
 }
 
 
 export function evaluateFormula(
   formula: string,
-  variables: FormulaVariables
+  variables: FormulaVariables,
+  functions: FormulaFunctions = {}
 ): number {
 
   const tokens =
@@ -512,7 +850,8 @@ export function evaluateFormula(
   const parser =
     new Parser(
       tokens,
-      variables
+      variables,
+      functions
     );
 
 

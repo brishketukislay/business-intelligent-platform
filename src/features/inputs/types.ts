@@ -11,6 +11,7 @@ export type InputType =
 
 
 export interface InputDefinitionDto {
+
   id: string;
 
   modelId: string;
@@ -26,4 +27,29 @@ export interface InputDefinitionDto {
   category: string | null;
 
   createdAt: Date;
+
+}
+
+
+export interface ModelPeriodDto {
+
+  id: string;
+
+  name: string;
+
+  key: string;
+
+  sortOrder: number;
+
+}
+
+
+export interface PeriodValueDto {
+
+  inputId: string;
+
+  periodId: string;
+
+  value: string;
+
 }

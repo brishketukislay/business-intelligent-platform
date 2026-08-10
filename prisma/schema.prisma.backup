@@ -1,0 +1,436 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id String @id @default(cuid())
+
+  name String?
+
+  email String @unique
+
+  passwordHash String?
+
+  role String @default("USER")
+
+  status String @default("PENDING")
+
+  createdAt DateTime @default(now())
+
+  resetTokens PasswordResetToken[]
+
+  businessModels BusinessModel[]
+
+  workingValues WorkingValue[]
+
+  savedModels SavedModel[]
+
+  scenarios Scenario[]
+
+  modelAccess BusinessModelAccess[]
+}
+
+model PasswordResetToken {
+  id String @id @default(cuid())
+
+  userId String
+
+  tokenHash String @unique
+
+  expiresAt DateTime
+
+  usedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  user User @relation(
+    fields: [userId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model BusinessModel {
+  id String @id @default(cuid())
+
+  name String
+
+  description String?
+
+  status String @default("ACTIVE")
+
+  createdBy String
+
+  createdAt DateTime @default(now())
+
+  creator User @relation(
+    fields: [createdBy],
+    references: [id]
+  )
+
+  settings BusinessModelSettings?
+
+  inputs InputDefinition[]
+
+  metrics MetricDefinition[]
+
+  periods ModelPeriod[]
+
+  savedValues SavedModelValue[]
+
+  savedModels SavedModel[]
+
+  scenarios Scenario[]
+
+  access BusinessModelAccess[]
+}
+
+model BusinessModelSettings {
+  id String @id @default(cuid())
+
+  modelId String @unique
+
+  currency String @default("GBP")
+
+  fiscalYearStartMonth Int @default(1)
+
+  periodType String @default("MONTH")
+
+  model BusinessModel @relation(
+    fields: [modelId],
+    references: [id],
+    onDelete: Cascade
+  )
+}
+
+model ModelPeriod {
+  id String @id @default(cuid())
+
+  modelId String
+
+  name String
+
+  key String
+
+  startDate DateTime
+
+  endDate DateTime
+
+  sortOrder Int
+
+  status String @default("ACTIVE")
+
+  model BusinessModel @relation(
+    fields: [modelId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  values PeriodValue[]
+
+  @@unique([modelId, key])
+  @@index([modelId, sortOrder])
+}
+
+model InputDefinition {
+  id String @id @default(cuid())
+
+  modelId String
+
+  name String
+
+  key String
+
+  type String
+
+  unit String?
+
+  category String?
+
+  status String @default("ACTIVE")
+
+  isRequired Boolean @default(false)
+
+  description String?
+
+  createdAt DateTime @default(now())
+
+  model BusinessModel @relation(
+    fields: [modelId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  workingValues WorkingValue[]
+
+  periodValues PeriodValue[]
+
+  savedValues SavedModelValue[]
+
+  scenarioValues ScenarioValue[]
+
+  @@unique([modelId, key])
+}
+
+model PeriodValue {
+  id String @id @default(cuid())
+
+  periodId String
+
+  inputId String
+
+  value String
+
+  updatedAt DateTime @updatedAt
+
+  period ModelPeriod @relation(
+    fields: [periodId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  input InputDefinition @relation(
+    fields: [inputId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  @@unique([periodId, inputId])
+  @@index([periodId])
+  @@index([inputId])
+}
+
+model MetricDefinition {
+  id String @id @default(cuid())
+
+  modelId String
+
+  name String
+
+  key String
+
+  type String
+
+  unit String?
+
+  category String?
+
+  formula String
+
+  scope String @default("PERIOD")
+
+  status String @default("ACTIVE")
+
+  createdAt DateTime @default(now())
+
+  model BusinessModel @relation(
+    fields: [modelId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  @@unique([modelId, key])
+}
+
+model WorkingValue {
+  id String @id @default(cuid())
+
+  userId String
+
+  inputId String
+
+  value String
+
+  updatedAt DateTime @updatedAt
+
+  user User @relation(
+    fields: [userId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  input InputDefinition @relation(
+    fields: [inputId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  @@unique([userId, inputId])
+}
+
+model SavedModel {
+  id String @id @default(cuid())
+
+  modelId String
+
+  createdBy String
+
+  name String
+
+  createdAt DateTime @default(now())
+
+  model BusinessModel @relation(
+    fields: [modelId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  creator User @relation(
+    fields: [createdBy],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  values SavedModelValue[]
+
+  @@index([modelId, createdAt])
+  @@index([createdBy, createdAt])
+}
+
+model SavedModelValue {
+  id String @id @default(cuid())
+
+  modelId String
+
+  inputId String
+
+  savedModelId String?
+
+  periodId String?
+
+  value String
+
+  createdAt DateTime @default(now())
+
+  model BusinessModel @relation(
+    fields: [modelId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  input InputDefinition @relation(
+    fields: [inputId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  savedModel SavedModel? @relation(
+    fields: [savedModelId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  period ModelPeriod? @relation(
+    fields: [periodId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  @@index([savedModelId])
+  @@index([periodId])
+}
+
+model Scenario {
+  id String @id @default(cuid())
+
+  modelId String
+
+  createdBy String
+
+  name String
+
+  description String?
+
+  status String @default("ACTIVE")
+
+  createdAt DateTime @default(now())
+
+  model BusinessModel @relation(
+    fields: [modelId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  creator User @relation(
+    fields: [createdBy],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  values ScenarioValue[]
+
+  @@index([modelId, createdAt])
+  @@index([createdBy, createdAt])
+}
+
+model ScenarioValue {
+  id String @id @default(cuid())
+
+  scenarioId String
+
+  inputId String
+
+  periodId String?
+
+  value String
+
+  updatedAt DateTime @updatedAt
+
+  scenario Scenario @relation(
+    fields: [scenarioId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  input InputDefinition @relation(
+    fields: [inputId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  period ModelPeriod? @relation(
+    fields: [periodId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  @@unique([scenarioId, inputId, periodId])
+  @@index([scenarioId])
+  @@index([periodId])
+}
+
+model BusinessModelAccess {
+  id String @id @default(cuid())
+
+  modelId String
+
+  userId String
+
+  permission String @default("VIEW")
+
+  createdAt DateTime @default(now())
+
+  model BusinessModel @relation(
+    fields: [modelId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  user User @relation(
+    fields: [userId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  @@unique([modelId, userId])
+  @@index([modelId])
+  @@index([userId])
+}

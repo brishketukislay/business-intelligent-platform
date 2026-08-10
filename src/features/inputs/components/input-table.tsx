@@ -2,581 +2,606 @@
 
 import { useState } from "react";
 
+import { Input } from "@/components/ui/input";
+
 import {
-  deactivateInputAction,
-  updateInputAction,
+  upsertPeriodValueAction,
 } from "../actions/input-actions";
 
-import {
-  INPUT_TYPES,
-  type InputType,
-} from "../types";
 
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-
-
-
-type InputRecord = {
+type InputDefinition = {
   id: string;
-  modelId: string;
   name: string;
   key: string;
   type: string;
   unit: string | null;
   category: string | null;
-  status: string;
+  scope: string;
 };
 
+
+type ModelPeriod = {
+  id: string;
+  name: string;
+  key: string;
+  startDate?: string;
+  endDate?: string;
+  sortOrder: number;
+  status?: string;
+};
+
+
+type PeriodValue = {
+  id?: string;
+  inputId: string;
+  periodId: string;
+  value: number | string | null;
+};
 
 
 type InputTableProps = {
-  inputs: InputRecord[];
+  modelId: string;
+  inputs: InputDefinition[];
+  periods?: ModelPeriod[];
+  periodValues?: PeriodValue[];
 };
 
 
-
 export function InputTable({
+  modelId,
   inputs,
+  periods = [],
+  periodValues = [],
 }: InputTableProps) {
 
   const [
-    editingInput,
-    setEditingInput,
-  ] = useState<InputRecord | null>(
-    null
+    values,
+    setValues,
+  ] = useState<Record<string, string>>(
+    () => {
+
+      const initial:
+        Record<string, string> = {};
+
+
+      for (
+        const periodValue
+        of periodValues
+      ) {
+
+        const key =
+          `${periodValue.inputId}:${periodValue.periodId}`;
+
+
+        initial[key] =
+          periodValue.value === null ||
+          periodValue.value === undefined
+            ? ""
+            : String(periodValue.value);
+
+      }
+
+
+      return initial;
+
+    }
   );
 
 
   const [
-    isSubmitting,
-    setIsSubmitting,
-  ] = useState(false);
+    savingKey,
+    setSavingKey,
+  ] = useState<string | null>(null);
 
 
   const [
-    message,
-    setMessage,
-  ] = useState<string | null>(
-    null
-  );
+    error,
+    setError,
+  ] = useState<string | null>(null);
 
 
+  function getValue(
+    inputId: string,
+    periodId: string
+  ): string {
 
-  async function handleDeactivate(
-    id: string
-  ) {
-
-    const confirmed =
-      window.confirm(
-        "Deactivate this input definition?"
-      );
-
-
-    if (!confirmed) {
-      return;
-    }
-
-
-    setMessage(null);
-
-
-    const result =
-      await deactivateInputAction(
-        id
-      );
-
-
-    if (result.success) {
-
-      window.location.reload();
-
-      return;
-
-    }
-
-
-    setMessage(
-      "Unable to deactivate input definition."
+    return (
+      values[
+        `${inputId}:${periodId}`
+      ] ?? ""
     );
 
   }
 
 
-
-  async function handleEdit(
-    formData: FormData
+  function setValue(
+    inputId: string,
+    periodId: string,
+    value: string
   ) {
 
-    if (!editingInput) {
-      return;
+    const key =
+      `${inputId}:${periodId}`;
+
+
+    setValues(
+      current => ({
+
+        ...current,
+
+        [key]:
+          value,
+
+      })
+    );
+
+  }
+
+
+  function getInputType(
+    input: InputDefinition
+  ): "number" | "text" {
+
+    switch (input.type) {
+
+      case "Number":
+      case "Currency":
+      case "Percentage":
+
+        return "number";
+
+      default:
+
+        return "text";
+
     }
 
+  }
 
-    setIsSubmitting(true);
 
-    setMessage(null);
+  function getStep(
+    input: InputDefinition
+  ): string | undefined {
+
+    switch (input.type) {
+
+      case "Number":
+      case "Currency":
+      case "Percentage":
+
+        return "any";
+
+      default:
+
+        return undefined;
+
+    }
+
+  }
+
+
+  async function saveValue(
+    input: InputDefinition,
+    period: ModelPeriod
+  ) {
+
+    const valueKey =
+      `${input.id}:${period.id}`;
+
+
+    setSavingKey(
+      valueKey
+    );
+
+    setError(null);
 
 
     try {
 
-      const result =
-        await updateInputAction(
-          editingInput.id,
-          formData
+      const rawValue =
+        getValue(
+          input.id,
+          period.id
         );
 
 
-      if (result.success) {
+      /*
+       * Period values are stored as strings.
+       *
+       * This allows the input definition itself
+       * to determine whether the field is numeric
+       * or textual.
+       */
 
-        setEditingInput(null);
+      const result =
+        await upsertPeriodValueAction(
+          modelId,
+          input.id,
+          period.id,
+          rawValue
+        );
 
-        window.location.reload();
 
-        return;
+      if (!result.success) {
+
+        setError(
+          typeof result.error === "string"
+            ? result.error
+            : "Unable to save value."
+        );
 
       }
-
-
-      setMessage(
-        "Unable to update input definition."
-      );
 
     } catch (error) {
 
       console.error(error);
 
-      setMessage(
-        "An unexpected error occurred."
+      setError(
+        "Unable to save value."
       );
 
     } finally {
 
-      setIsSubmitting(false);
+      setSavingKey(null);
 
     }
 
   }
 
 
-
   if (inputs.length === 0) {
 
     return (
-      <div className="text-sm text-muted-foreground">
-        No input definitions created yet.
+
+      <div className="rounded-lg border border-dashed p-8 text-center">
+
+        <p className="text-sm text-muted-foreground">
+          No inputs have been configured for this model.
+        </p>
+
       </div>
+
     );
 
   }
 
 
+  if (periods.length === 0) {
+
+    return (
+
+      <div className="rounded-lg border border-dashed p-8 text-center">
+
+        <p className="text-sm text-muted-foreground">
+          No periods have been configured for this model.
+        </p>
+
+      </div>
+
+    );
+
+  }
+
 
   return (
 
-    <>
-
-      <Table>
-
-        <TableHeader>
-
-          <TableRow>
-
-            <TableHead>
-              Name
-            </TableHead>
-
-            <TableHead>
-              Key
-            </TableHead>
-
-            <TableHead>
-              Type
-            </TableHead>
-
-            <TableHead>
-              Unit
-            </TableHead>
-
-            <TableHead>
-              Category
-            </TableHead>
-
-            <TableHead>
-              Status
-            </TableHead>
-
-            <TableHead className="text-right">
-              Actions
-            </TableHead>
-
-          </TableRow>
-
-        </TableHeader>
+    <div className="space-y-4">
 
 
+      {error && (
 
-        <TableBody>
+        <div
+          className="
+            rounded-md
+            border
+            border-destructive/30
+            bg-destructive/10
+            px-4
+            py-3
+          "
+        >
 
-          {inputs.map(
-            (input) => (
+          <p className="text-sm text-destructive">
+            {error}
+          </p>
 
-              <TableRow
-                key={input.id}
+        </div>
+
+      )}
+
+
+      <div className="overflow-x-auto rounded-lg border">
+
+        <table
+          className="
+            w-full
+            min-w-[1100px]
+            border-collapse
+            text-sm
+          "
+        >
+
+          <thead>
+
+            <tr className="border-b bg-muted/40">
+
+              <th
+                className="
+                  sticky
+                  left-0
+                  z-10
+                  min-w-[220px]
+                  border-r
+                  bg-muted/40
+                  px-4
+                  py-3
+                  text-left
+                  font-medium
+                "
               >
-
-                <TableCell className="font-medium">
-                  {input.name}
-                </TableCell>
+                Input
+              </th>
 
 
-                <TableCell>
-
-                  <code className="text-xs">
-                    {input.key}
-                  </code>
-
-                </TableCell>
-
-
-                <TableCell>
-                  {input.type}
-                </TableCell>
-
-
-                <TableCell>
-                  {input.unit ?? "-"}
-                </TableCell>
+              <th
+                className="
+                  min-w-[100px]
+                  px-4
+                  py-3
+                  text-left
+                  font-medium
+                "
+              >
+                Type
+              </th>
 
 
-                <TableCell>
-                  {input.category ?? "-"}
-                </TableCell>
+              <th
+                className="
+                  min-w-[100px]
+                  px-4
+                  py-3
+                  text-left
+                  font-medium
+                "
+              >
+                Unit
+              </th>
 
 
-                <TableCell>
+              <th
+                className="
+                  min-w-[120px]
+                  px-4
+                  py-3
+                  text-left
+                  font-medium
+                "
+              >
+                Scope
+              </th>
 
-                  <Badge
-                    variant={
-                      input.status === "ACTIVE"
-                        ? "default"
-                        : "secondary"
-                    }
+
+              {periods.map(
+                period => (
+
+                  <th
+                    key={period.id}
+                    className="
+                      min-w-[120px]
+                      px-3
+                      py-3
+                      text-center
+                      font-medium
+                    "
                   >
+                    {period.name}
+                  </th>
 
-                    {input.status}
-
-                  </Badge>
-
-                </TableCell>
-
-
-                <TableCell>
-
-                  <div className="flex justify-end gap-2">
-
-                    {input.status === "ACTIVE" && (
-
-                      <>
-
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          onClick={() =>
-                            setEditingInput(
-                              input
-                            )
-                          }
-                        >
-                          Edit
-                        </Button>
-
-
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="ghost"
-                          onClick={() =>
-                            handleDeactivate(
-                              input.id
-                            )
-                          }
-                        >
-                          Deactivate
-                        </Button>
-
-                      </>
-
-                    )}
-
-                  </div>
-
-                </TableCell>
-
-              </TableRow>
-
-            )
-          )}
-
-        </TableBody>
-
-      </Table>
-
-
-
-      <Dialog
-        open={
-          editingInput !== null
-        }
-        onOpenChange={(open) => {
-
-          if (!open) {
-
-            setEditingInput(null);
-
-            setMessage(null);
-
-          }
-
-        }}
-      >
-
-        <DialogContent>
-
-          <DialogHeader>
-
-            <DialogTitle>
-              Edit Input Definition
-            </DialogTitle>
-
-            <DialogDescription>
-              Update the configuration for
-              this input definition.
-            </DialogDescription>
-
-          </DialogHeader>
-
-
-
-          {editingInput && (
-
-            <form
-              action={handleEdit}
-              className="space-y-5"
-            >
-
-              <input
-                type="hidden"
-                name="modelId"
-                value={
-                  editingInput.modelId
-                }
-              />
-
-
-
-              <div className="space-y-2">
-
-                <Label htmlFor="edit-name">
-                  Name
-                </Label>
-
-                <Input
-                  id="edit-name"
-                  name="name"
-                  defaultValue={
-                    editingInput.name
-                  }
-                  required
-                />
-
-              </div>
-
-
-
-              <div className="space-y-2">
-
-                <Label htmlFor="edit-key">
-                  Key
-                </Label>
-
-                <Input
-                  id="edit-key"
-                  name="key"
-                  defaultValue={
-                    editingInput.key
-                  }
-                  required
-                />
-
-              </div>
-
-
-
-              <div className="space-y-2">
-
-                <Label>
-                  Type
-                </Label>
-
-
-                <Select
-                  defaultValue={
-                    editingInput.type
-                  }
-                  onValueChange={() => {}}
-                >
-
-                  <SelectTrigger>
-
-                    <SelectValue />
-
-                  </SelectTrigger>
-
-
-                  <SelectContent>
-
-                    {INPUT_TYPES.map(
-                      (inputType) => (
-
-                        <SelectItem
-                          key={inputType}
-                          value={inputType}
-                        >
-                          {inputType}
-                        </SelectItem>
-
-                      )
-                    )}
-
-                  </SelectContent>
-
-                </Select>
-
-
-                <input
-                  type="hidden"
-                  name="type"
-                  value={
-                    editingInput.type
-                  }
-                />
-
-              </div>
-
-
-
-              <div className="space-y-2">
-
-                <Label htmlFor="edit-unit">
-                  Unit
-                </Label>
-
-                <Input
-                  id="edit-unit"
-                  name="unit"
-                  defaultValue={
-                    editingInput.unit ?? ""
-                  }
-                />
-
-              </div>
-
-
-
-              <div className="space-y-2">
-
-                <Label htmlFor="edit-category">
-                  Category
-                </Label>
-
-                <Input
-                  id="edit-category"
-                  name="category"
-                  defaultValue={
-                    editingInput.category ?? ""
-                  }
-                />
-
-              </div>
-
-
-
-              {message && (
-
-                <p className="text-sm text-destructive">
-                  {message}
-                </p>
-
+                )
               )}
 
+            </tr>
+
+          </thead>
 
 
-              <DialogFooter>
+          <tbody>
 
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() =>
-                    setEditingInput(null)
-                  }
-                >
-                  Cancel
-                </Button>
+            {inputs.map(
+              input => {
+
+                const isPeriodInput =
+                  input.scope === "PERIOD";
 
 
-                <Button
-                  type="submit"
-                  disabled={isSubmitting}
-                >
+                return (
 
-                  {isSubmitting
-                    ? "Saving..."
-                    : "Save Changes"}
+                  <tr
+                    key={input.id}
+                    className="border-b last:border-0"
+                  >
 
-                </Button>
+                    {/* Input */}
 
-              </DialogFooter>
+                    <td
+                      className="
+                        sticky
+                        left-0
+                        z-10
+                        border-r
+                        bg-background
+                        px-4
+                        py-4
+                      "
+                    >
 
-            </form>
+                      <div className="font-medium">
+                        {input.name}
+                      </div>
 
-          )}
 
-        </DialogContent>
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        {input.key}
+                      </div>
 
-      </Dialog>
 
-    </>
+                      {input.category && (
+
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          {input.category}
+                        </div>
+
+                      )}
+
+                    </td>
+
+
+                    {/* Type */}
+
+                    <td className="px-4 py-4 text-muted-foreground">
+                      {input.type}
+                    </td>
+
+
+                    {/* Unit */}
+
+                    <td className="px-4 py-4 text-muted-foreground">
+                      {input.unit ?? "—"}
+                    </td>
+
+
+                    {/* Scope */}
+
+                    <td className="px-4 py-4">
+
+                      {isPeriodInput ? (
+
+                        <span className="text-foreground">
+                          Period
+                        </span>
+
+                      ) : (
+
+                        <span className="text-muted-foreground">
+                          Model
+                        </span>
+
+                      )}
+
+                    </td>
+
+
+                    {/* Period values */}
+
+                    {periods.map(
+                      period => {
+
+                        const value =
+                          getValue(
+                            input.id,
+                            period.id
+                          );
+
+
+                        const valueKey =
+                          `${input.id}:${period.id}`;
+
+
+                        /*
+                         * Model-level inputs do not
+                         * receive period editors.
+                         *
+                         * There is deliberately no
+                         * key-based special case here.
+                         */
+
+                        if (!isPeriodInput) {
+
+                          return (
+
+                            <td
+                              key={period.id}
+                              className="
+                                px-3
+                                py-3
+                                text-center
+                                text-muted-foreground
+                              "
+                            >
+                              —
+                            </td>
+
+                          );
+
+                        }
+
+
+                        return (
+
+                          <td
+                            key={period.id}
+                            className="px-3 py-3"
+                          >
+
+                            <Input
+                              type={getInputType(input)}
+                              step={getStep(input)}
+                              value={value}
+                              placeholder="—"
+                              onChange={
+                                event =>
+                                  setValue(
+                                    input.id,
+                                    period.id,
+                                    event.target.value
+                                  )
+                              }
+                              onBlur={() =>
+                                saveValue(
+                                  input,
+                                  period
+                                )
+                              }
+                              disabled={
+                                savingKey === valueKey
+                              }
+                              className="h-9 min-w-[90px]"
+                            />
+
+                          </td>
+
+                        );
+
+                      }
+                    )}
+
+                  </tr>
+
+                );
+
+              }
+            )}
+
+          </tbody>
+
+        </table>
+
+      </div>
+
+
+      <p className="text-xs text-muted-foreground">
+
+        Inputs configured as{" "}
+        <span className="font-medium text-foreground">
+          Monthly / Period
+        </span>{" "}
+        can be entered separately for each model period.
+        Model-level inputs do not have monthly values.
+
+      </p>
+
+    </div>
 
   );
 

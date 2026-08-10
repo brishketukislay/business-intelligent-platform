@@ -10,6 +10,7 @@ import {
 
 import {
   businessModelSchema,
+  type BusinessModelInput,
 } from "../schemas/model-schema";
 
 import {
@@ -19,9 +20,9 @@ import {
 } from "../services/model-service";
 
 
-function formDataToModel(
+function formDataToBusinessModel(
   formData: FormData
-) {
+): BusinessModelInput {
 
   return {
 
@@ -38,7 +39,7 @@ function formDataToModel(
     status:
       String(
         formData.get("status") ?? "ACTIVE"
-      ) as "ACTIVE" | "INACTIVE",
+      ) as BusinessModelInput["status"],
 
   };
 
@@ -53,9 +54,15 @@ export async function createBusinessModelAction(
     await requireCurrentUser();
 
 
+  const data =
+    formDataToBusinessModel(
+      formData
+    );
+
+
   const result =
     businessModelSchema.safeParse(
-      formDataToModel(formData)
+      data
     );
 
 
@@ -75,10 +82,11 @@ export async function createBusinessModelAction(
 
   try {
 
-    await createBusinessModel(
-      result.data,
-      user.id
-    );
+    const model =
+      await createBusinessModel(
+        result.data,
+        user.id
+      );
 
 
     revalidatePath(
@@ -87,7 +95,12 @@ export async function createBusinessModelAction(
 
 
     return {
+
       success: true,
+
+      modelId:
+        model.id,
+
     };
 
   } catch (error) {
@@ -103,9 +116,7 @@ export async function createBusinessModelAction(
       success: false,
 
       error:
-        error instanceof Error
-          ? error.message
-          : "Unable to create business model.",
+        "Unable to create business model.",
 
     };
 
@@ -115,7 +126,7 @@ export async function createBusinessModelAction(
 
 
 export async function updateBusinessModelAction(
-  id: string,
+  modelId: string,
   formData: FormData
 ) {
 
@@ -123,9 +134,15 @@ export async function updateBusinessModelAction(
     await requireCurrentUser();
 
 
+  const data =
+    formDataToBusinessModel(
+      formData
+    );
+
+
   const result =
     businessModelSchema.safeParse(
-      formDataToModel(formData)
+      data
     );
 
 
@@ -145,25 +162,34 @@ export async function updateBusinessModelAction(
 
   try {
 
-    await updateBusinessModel(
-      id,
-      result.data,
-      user.id
-    );
+    const model =
+      await updateBusinessModel(
+        modelId,
+        result.data,
+        user.id
+      );
 
 
     revalidatePath(
       "/models"
     );
 
+    revalidatePath(
+      `/models/${modelId}`
+    );
 
     revalidatePath(
-      `/models/${id}`
+      `/models/${modelId}/edit`
     );
 
 
     return {
+
       success: true,
+
+      modelId:
+        model.id,
+
     };
 
   } catch (error) {
@@ -179,9 +205,7 @@ export async function updateBusinessModelAction(
       success: false,
 
       error:
-        error instanceof Error
-          ? error.message
-          : "Unable to update business model.",
+        "Unable to update business model.",
 
     };
 
@@ -191,7 +215,7 @@ export async function updateBusinessModelAction(
 
 
 export async function deactivateBusinessModelAction(
-  id: string
+  modelId: string
 ) {
 
   const user =
@@ -201,7 +225,7 @@ export async function deactivateBusinessModelAction(
   try {
 
     await deactivateBusinessModel(
-      id,
+      modelId,
       user.id
     );
 
@@ -210,9 +234,12 @@ export async function deactivateBusinessModelAction(
       "/models"
     );
 
+    revalidatePath(
+      `/models/${modelId}`
+    );
 
     revalidatePath(
-      `/models/${id}`
+      `/models/${modelId}/edit`
     );
 
 
@@ -233,9 +260,7 @@ export async function deactivateBusinessModelAction(
       success: false,
 
       error:
-        error instanceof Error
-          ? error.message
-          : "Unable to deactivate business model.",
+        "Unable to deactivate business model.",
 
     };
 

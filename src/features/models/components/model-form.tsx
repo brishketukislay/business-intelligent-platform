@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import {
+  useState,
+} from "react";
 
 import {
   createBusinessModelAction,
@@ -68,9 +70,7 @@ export function ModelForm() {
   const [
     error,
     setError,
-  ] = useState<string | null>(
-    null
-  );
+  ] = useState<string | null>(null);
 
 
   async function handleSubmit(
@@ -79,7 +79,6 @@ export function ModelForm() {
 
     setIsSubmitting(true);
     setError(null);
-
 
     formData.set(
       "status",
@@ -137,26 +136,11 @@ export function ModelForm() {
     >
 
       <DialogTrigger
-        className="
-          inline-flex
-          h-10
-          items-center
-          justify-center
-          rounded-md
-          bg-primary
-          px-4
-          py-2
-          text-sm
-          font-medium
-          text-primary-foreground
-          transition-colors
-          hover:bg-primary/90
-          focus-visible:outline-none
-          focus-visible:ring-2
-          focus-visible:ring-ring
-          disabled:pointer-events-none
-          disabled:opacity-50
-        "
+        render={
+          <Button
+            type="button"
+          />
+        }
       >
         Create Model
       </DialogTrigger>
@@ -191,7 +175,7 @@ export function ModelForm() {
             <Input
               id="model-name"
               name="name"
-              placeholder="e.g. Standard Business Model"
+              placeholder="e.g. Finance Model"
               required
             />
 
@@ -277,6 +261,7 @@ export function ModelForm() {
               onClick={() =>
                 setOpen(false)
               }
+              disabled={isSubmitting}
             >
               Cancel
             </Button>
