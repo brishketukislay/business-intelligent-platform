@@ -202,13 +202,12 @@ export async function createScenario(
 
 
   /*
-   * Create one ScenarioValue for every
-   * active input.
+   * Create one scalar ScenarioValue for
+   * every active input.
    *
-   * If the latest saved model contains
-   * a value, use it.
-   *
-   * Otherwise start with an empty value.
+   * Period-aware ScenarioValues use periodId.
+   * Existing scenario behaviour remains
+   * scalar by explicitly using periodId: null.
    */
   if (inputs.length > 0) {
 
@@ -223,6 +222,9 @@ export async function createScenario(
 
             inputId:
               input.id,
+
+            periodId:
+              null,
 
             value:
               savedValuesByInputId.get(
@@ -352,9 +354,12 @@ export async function deactivateScenario(
 
 
 /**
- * Save one scenario input value.
+ * Save one scalar scenario input value.
  *
- * This is intentionally separate from scenario creation.
+ * The current scenario API stores one value per
+ * input using periodId: null. Period-specific
+ * scenario values can continue to use periodId
+ * separately.
  */
 export async function upsertScenarioValue(
   scenarioId: string,
@@ -423,31 +428,62 @@ export async function upsertScenarioValue(
   }
 
 
-  return prisma.scenarioValue.upsert({
+  /*
+   * The Prisma schema now uses the compound
+   * key (scenarioId, inputId, periodId).
+   *
+   * Because this API is currently scalar,
+   * explicitly target the period-less value.
+   */
+  const existing =
+    await prisma.scenarioValue.findFirst({
 
-    where: {
-
-      scenarioId_inputId: {
+      where: {
 
         scenarioId,
 
         inputId,
 
+        periodId:
+          null,
+
       },
 
-    },
+    });
 
-    create: {
+
+  if (existing) {
+
+    return prisma.scenarioValue.update({
+
+      where: {
+
+        id:
+          existing.id,
+
+      },
+
+      data: {
+
+        value,
+
+      },
+
+    });
+
+  }
+
+
+  return prisma.scenarioValue.create({
+
+    data: {
 
       scenarioId,
 
       inputId,
 
-      value,
-
-    },
-
-    update: {
+      periodId:
+        null,
 
       value,
 

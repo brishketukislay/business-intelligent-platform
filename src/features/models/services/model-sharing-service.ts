@@ -12,6 +12,20 @@ export type ModelPermission =
   | "EDIT";
 
 
+// export type ModelShare = {
+//   id: string;
+//   modelId: string;
+//   userId: string;
+//   permission: ModelPermission;
+//   createdAt: Date;
+//   user: {
+//     id: string;
+//     email: string;
+//     name: string | null;
+//   };
+// };
+
+
 export async function shareModel(
   modelId: string,
   ownerUserId: string,
@@ -19,10 +33,6 @@ export async function shareModel(
   permission: ModelPermission = "VIEW"
 ) {
 
-  /*
-   * Only users who can edit the model may
-   * manage sharing.
-   */
   await requireModelEditAccess(
     modelId,
     ownerUserId
@@ -103,11 +113,6 @@ export async function shareModel(
   }
 
 
-  /*
-   * The owner already has implicit full access.
-   * There is no need to create an access row
-   * for the owner.
-   */
   if (
     model.createdBy === user.id
   ) {
@@ -170,48 +175,74 @@ export async function shareModel(
 }
 
 
-export async function getModelShares(
-  modelId: string,
-  userId: string
-) {
+// export async function getModelShares(
+//   modelId: string,
+//   userId: string
+// ): Promise<ModelShare[]> {
 
-  await requireModelEditAccess(
-    modelId,
-    userId
-  );
+//   await requireModelEditAccess(
+//     modelId,
+//     userId
+//   );
 
 
-  return prisma.businessModelAccess.findMany({
+//   const shares =
+//     await prisma.businessModelAccess.findMany({
 
-    where: {
-      modelId,
-    },
+//       where: {
+//         modelId,
+//       },
 
-    include: {
+//       include: {
 
-      user: {
+//         user: {
 
-        select: {
+//           select: {
 
-          id: true,
+//             id: true,
 
-          email: true,
+//             email: true,
 
-          name: true,
+//             name: true,
 
-        },
+//           },
 
-      },
+//         },
 
-    },
+//       },
 
-    orderBy: {
-      createdAt: "asc",
-    },
+//       orderBy: {
+//         createdAt: "asc",
+//       },
 
-  });
+//     });
 
-}
+
+//   return shares.map(
+//     (share) => ({
+
+//       id:
+//         share.id,
+
+//       modelId:
+//         share.modelId,
+
+//       userId:
+//         share.userId,
+
+//       permission:
+//         share.permission as ModelPermission,
+
+//       createdAt:
+//         share.createdAt,
+
+//       user:
+//         share.user,
+
+//     })
+//   );
+
+// }
 
 
 export async function updateModelShare(
@@ -239,7 +270,27 @@ export async function updateModelShare(
     },
 
     data: {
+
       permission,
+
+    },
+
+    include: {
+
+      user: {
+
+        select: {
+
+          id: true,
+
+          email: true,
+
+          name: true,
+
+        },
+
+      },
+
     },
 
   });
@@ -259,7 +310,7 @@ export async function removeModelShare(
   );
 
 
-  await prisma.businessModelAccess.delete({
+  return prisma.businessModelAccess.delete({
 
     where: {
 
@@ -271,10 +322,5 @@ export async function removeModelShare(
     },
 
   });
-
-
-  return {
-    success: true,
-  };
 
 }

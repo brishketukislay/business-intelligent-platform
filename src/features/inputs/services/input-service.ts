@@ -17,9 +17,6 @@ export async function getInputDefinitions(
   userId: string
 ) {
 
-  /*
-   * User may be the owner or have explicit access.
-   */
   await requireModelAccess(
     modelId,
     userId
@@ -47,36 +44,103 @@ export async function getInputDefinitions(
 }
 
 
+export async function getInputPeriodData(
+  modelId: string,
+  userId: string
+) {
+
+  await requireModelAccess(
+    modelId,
+    userId
+  );
+
+
+  const [
+    periods,
+    values,
+  ] = await Promise.all([
+
+    prisma.modelPeriod.findMany({
+
+      where: {
+        modelId,
+        status: "ACTIVE",
+      },
+
+      orderBy: {
+        sortOrder: "asc",
+      },
+
+      select: {
+
+        id: true,
+        name: true,
+        key: true,
+        sortOrder: true,
+
+      },
+
+    }),
+
+    prisma.periodValue.findMany({
+
+      where: {
+
+        period: {
+          modelId,
+        },
+
+        input: {
+          modelId,
+          status: "ACTIVE",
+        },
+
+      },
+
+      select: {
+
+        inputId: true,
+        periodId: true,
+        value: true,
+
+      },
+
+    }),
+
+  ]);
+
+
+  return {
+    periods,
+    values,
+  };
+
+}
+
+
 export async function createInputDefinition(
   data: InputDefinitionInput,
   userId: string
 ) {
 
-  /*
-   * Creating an input changes the model structure,
-   * so VIEW users cannot do this.
-   */
   await requireModelEditAccess(
     data.modelId,
     userId
   );
 
-
   return prisma.inputDefinition.create({
 
     data: {
 
-      modelId:
-        data.modelId,
+      modelId: data.modelId,
 
-      name:
-        data.name,
+      name: data.name,
 
-      key:
-        data.key,
+      key: data.key,
 
-      type:
-        data.type,
+      type: data.type,
+
+      scope: data.scope,
 
       unit:
         data.unit ??
@@ -109,7 +173,6 @@ export async function updateInputDefinition(
       select: {
 
         id: true,
-
         modelId: true,
 
       },
@@ -126,10 +189,6 @@ export async function updateInputDefinition(
   }
 
 
-  /*
-   * Make sure the input belongs to the model
-   * supplied by the form.
-   */
   if (
     input.modelId !== data.modelId
   ) {
@@ -197,7 +256,6 @@ export async function deactivateInputDefinition(
       select: {
 
         id: true,
-
         modelId: true,
 
       },
@@ -233,6 +291,164 @@ export async function deactivateInputDefinition(
 
       status:
         "INACTIVE",
+
+    },
+
+  });
+
+}
+
+
+export async function upsertPeriodValue(
+  data: {
+    modelId: string;
+    inputId: string;
+    periodId: string;
+    value: string;
+  },
+  userId: string
+) {
+
+  await requireModelEditAccess(
+    data.modelId,
+    userId
+  );
+
+
+  const [
+    input,
+    period,
+  ] = await Promise.all([
+
+    prisma.inputDefinition.findFirst({
+
+      where: {
+
+        id: data.inputId,
+
+        modelId: data.modelId,
+
+        status: "ACTIVE",
+
+      },
+
+      select: {
+        id: true,
+      },
+
+    }),
+
+    prisma.modelPeriod.findFirst({
+
+      where: {
+
+        id: data.periodId,
+
+        modelId: data.modelId,
+
+        status: "ACTIVE",
+
+      },
+
+      select: {
+        id: true,
+      },
+
+    }),
+
+  ]);
+
+
+  if (!input) {
+
+    throw new Error(
+      "Input does not belong to this business model."
+    );
+
+  }
+
+
+  if (!period) {
+
+    throw new Error(
+      "Period does not belong to this business model."
+    );
+
+  }
+
+
+  const value =
+    data.value.trim();
+
+
+  /*
+   * Blank means "no value entered".
+   * Remove an existing PeriodValue rather than
+   * storing an empty string.
+   */
+  if (value === "") {
+
+    await prisma.periodValue.deleteMany({
+
+      where: {
+
+        inputId: data.inputId,
+
+        periodId: data.periodId,
+
+      },
+
+    });
+
+    return null;
+
+  }
+
+
+  const numericValue =
+    Number(value);
+
+
+  if (!Number.isFinite(numericValue)) {
+
+    throw new Error(
+      "Period value must be numeric."
+    );
+
+  }
+
+
+  return prisma.periodValue.upsert({
+
+    where: {
+
+      periodId_inputId: {
+
+        periodId:
+          data.periodId,
+
+        inputId:
+          data.inputId,
+
+      },
+
+    },
+
+    update: {
+
+      value,
+
+    },
+
+    create: {
+
+      periodId:
+        data.periodId,
+
+      inputId:
+        data.inputId,
+
+      value,
 
     },
 

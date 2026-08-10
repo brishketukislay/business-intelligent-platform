@@ -3,9 +3,10 @@ import {
 } from "@/lib/prisma";
 
 import {
-  calculateSavedModelMetrics,
+  calculateMetricsFromValues,
   type CalculatedMetric,
 } from "@/features/metrics/services/metric-calculation-service";
+
 
 
 export type SavedModelComparisonValue = {
@@ -310,23 +311,77 @@ export async function compareSavedModels(
    * CalculatedMetric[] gives TypeScript the correct metric
    * type, so the maps below are strongly typed.
    */
-  const [
-    metricsA,
-    metricsB,
-  ] =
-    await Promise.all([
+const inputVariablesA:
+  Record<string, number> = {};
 
-      calculateSavedModelMetrics(
-        savedModelIdA,
-        userId
-      ),
 
-      calculateSavedModelMetrics(
-        savedModelIdB,
-        userId
-      ),
+for (
+  const savedValue
+  of snapshotA.values
+) {
 
-    ]);
+  const numericValue =
+    Number(savedValue.value);
+
+
+  if (
+    Number.isFinite(numericValue)
+  ) {
+
+    inputVariablesA[
+      savedValue.input.key
+    ] = numericValue;
+
+  }
+
+}
+
+
+const inputVariablesB:
+  Record<string, number> = {};
+
+
+for (
+  const savedValue
+  of snapshotB.values
+) {
+
+  const numericValue =
+    Number(savedValue.value);
+
+
+  if (
+    Number.isFinite(numericValue)
+  ) {
+
+    inputVariablesB[
+      savedValue.input.key
+    ] = numericValue;
+
+  }
+
+}
+
+
+const [
+  metricsA,
+  metricsB,
+] =
+  await Promise.all([
+
+    calculateMetricsFromValues(
+      modelId,
+      userId,
+      inputVariablesA
+    ),
+
+    calculateMetricsFromValues(
+      modelId,
+      userId,
+      inputVariablesB
+    ),
+
+  ]);
 
 
   const metricsByKeyA =

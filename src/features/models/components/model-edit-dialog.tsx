@@ -1,16 +1,6 @@
 "use client";
 
-import {
-  ModelActionDialog,
-} from "./model-action-dialog";
-
-import {
-  ModelEditForm,
-} from "./model-edit-form";
-
-import {
-  Button,
-} from "@/components/ui/button";
+import Link from "next/link";
 
 
 type ModelEditDialogProps = {
@@ -29,37 +19,33 @@ export function ModelEditDialog({
 
   return (
 
-    <ModelActionDialog
-
-      trigger={
-
-        <Button
-          type="button"
-          variant="outline"
-          className="
-            border-slate-300
-            bg-white
-            text-slate-900
-            hover:bg-slate-50
-          "
-        >
-          Edit Model
-        </Button>
-
-      }
-
-      title="Edit Business Model"
-
-      description="
-        Update the configuration for this business model.
+    <Link
+      href={`/models/${model.id}/edit`}
+      className="
+        inline-flex
+        h-10
+        items-center
+        justify-center
+        rounded-md
+        border
+        border-slate-300
+        bg-white
+        px-4
+        py-2
+        text-sm
+        font-medium
+        text-slate-900
+        shadow-sm
+        transition-colors
+        hover:bg-slate-50
+        focus-visible:outline-none
+        focus-visible:ring-2
+        focus-visible:ring-ring
+        focus-visible:ring-offset-2
       "
     >
-
-      <ModelEditForm
-        model={model}
-      />
-
-    </ModelActionDialog>
+      Edit Model
+    </Link>
 
   );
 

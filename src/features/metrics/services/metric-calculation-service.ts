@@ -8,7 +8,23 @@ import {
 
 import {
   evaluateFormula,
+  getFormulaIdentifiers,
 } from "./formula-engine";
+
+
+export type MetricPeriodValue = {
+
+  periodId: string;
+
+  periodName: string;
+
+  periodKey: string;
+
+  value: number | null;
+
+  error: string | null;
+
+};
 
 
 export type CalculatedMetric = {
@@ -30,6 +46,8 @@ export type CalculatedMetric = {
   value: number | null;
 
   error: string | null;
+
+  periodValues: MetricPeriodValue[];
 
 };
 
@@ -53,16 +71,38 @@ type MetricDefinition = {
 };
 
 
+type ModelPeriodRecord = {
+
+  id: string;
+
+  name: string;
+
+  key: string;
+
+  sortOrder: number;
+
+};
+
+
 function calculateMetricValues(
   metrics: MetricDefinition[],
-  inputVariables: Record<string, number>,
-): Map<string, number> {
+  inputVariablesByPeriod: Map<
+    string,
+    Record<string, number>
+  >,
+  periods: ModelPeriodRecord[],
+): Map<
+  string,
+  Map<string, number>
+> {
 
   const metricByKey =
     new Map<string, MetricDefinition>();
 
 
-  for (const metric of metrics) {
+  for (
+    const metric of metrics
+  ) {
 
     metricByKey.set(
       metric.key,
@@ -73,7 +113,10 @@ function calculateMetricValues(
 
 
   const calculatedValues =
-    new Map<string, number>();
+    new Map<
+      string,
+      Map<string, number>
+    >();
 
 
   const calculating =
@@ -81,11 +124,31 @@ function calculateMetricValues(
 
 
   function calculateMetric(
-    key: string
+    key: string,
+    periodId: string
   ): number {
 
-    const cached =
+    let periodValues =
       calculatedValues.get(key);
+
+
+    if (!periodValues) {
+
+      periodValues =
+        new Map<string, number>();
+
+      calculatedValues.set(
+        key,
+        periodValues
+      );
+
+    }
+
+
+    const cached =
+      periodValues.get(
+        periodId
+      );
 
 
     if (cached !== undefined) {
@@ -95,11 +158,19 @@ function calculateMetricValues(
     }
 
 
+    const inputVariables =
+      inputVariablesByPeriod.get(
+        periodId
+      ) ?? {};
+
+
     const inputValue =
       inputVariables[key];
 
 
-    if (inputValue !== undefined) {
+    if (
+      inputValue !== undefined
+    ) {
 
       return inputValue;
 
@@ -107,7 +178,9 @@ function calculateMetricValues(
 
 
     const metric =
-      metricByKey.get(key);
+      metricByKey.get(
+        key
+      );
 
 
     if (!metric) {
@@ -119,8 +192,14 @@ function calculateMetricValues(
     }
 
 
+    const calculationKey =
+      `${key}:${periodId}`;
+
+
     if (
-      calculating.has(key)
+      calculating.has(
+        calculationKey
+      )
     ) {
 
       throw new Error(
@@ -130,7 +209,9 @@ function calculateMetricValues(
     }
 
 
-    calculating.add(key);
+    calculating.add(
+      calculationKey
+    );
 
 
     try {
@@ -140,7 +221,7 @@ function calculateMetricValues(
 
 
       const identifiers =
-        extractIdentifiers(
+        getFormulaIdentifiers(
           metric.formula
         );
 
@@ -152,16 +233,111 @@ function calculateMetricValues(
 
         variables[identifier] =
           calculateMetric(
-            identifier
+            identifier,
+            periodId
           );
 
       }
 
 
+      const currentPeriod =
+        periods.find(
+          period =>
+            period.id === periodId
+        );
+
+
+      if (!currentPeriod) {
+
+        throw new Error(
+          `Unknown model period "${periodId}".`
+        );
+
+      }
+
+
+      const cumulative =
+        (
+          inputKey: string
+        ): number => {
+
+          let total = 0;
+
+
+          for (
+            const period
+            of periods
+          ) {
+
+            if (
+              period.sortOrder >
+              currentPeriod.sortOrder
+            ) {
+
+              break;
+
+            }
+
+
+            const periodVariables =
+              inputVariablesByPeriod.get(
+                period.id
+              ) ?? {};
+
+
+            const directInput =
+              periodVariables[
+                inputKey
+              ];
+
+
+            if (
+              directInput !== undefined
+            ) {
+
+              total +=
+                directInput;
+
+              continue;
+
+            }
+
+
+            /*
+             * CUMULATIVE can also reference a metric.
+             * This makes the function future-proof for
+             * cumulative metric chains.
+             */
+            if (
+              metricByKey.has(
+                inputKey
+              )
+            ) {
+
+              total +=
+                calculateMetric(
+                  inputKey,
+                  period.id
+                );
+
+            }
+
+          }
+
+
+          return total;
+
+        };
+
+
       const value =
         evaluateFormula(
           metric.formula,
-          variables
+          variables,
+          {
+            CUMULATIVE:
+              cumulative,
+          }
         );
 
 
@@ -176,8 +352,8 @@ function calculateMetricValues(
       }
 
 
-      calculatedValues.set(
-        key,
+      periodValues.set(
+        periodId,
         value
       );
 
@@ -186,7 +362,9 @@ function calculateMetricValues(
 
     } finally {
 
-      calculating.delete(key);
+      calculating.delete(
+        calculationKey
+      );
 
     }
 
@@ -194,13 +372,21 @@ function calculateMetricValues(
 
 
   for (
-    const metric
-    of metrics
+    const period
+    of periods
   ) {
 
-    calculateMetric(
-      metric.key
-    );
+    for (
+      const metric
+      of metrics
+    ) {
+
+      calculateMetric(
+        metric.key,
+        period.id
+      );
+
+    }
 
   }
 
@@ -210,39 +396,11 @@ function calculateMetricValues(
 }
 
 
-function extractIdentifiers(
-  formula: string
-): string[] {
-
-  const matches =
-    formula.match(
-      /[a-zA-Z_][a-zA-Z0-9_]*/g
-    );
-
-
-  if (!matches) {
-
-    return [];
-
-  }
-
-
-  return [
-    ...new Set(matches),
-  ];
-
-}
-
-
 export async function calculateMetrics(
   modelId: string,
   userId: string
 ): Promise<CalculatedMetric[]> {
 
-  /*
-   * The logged-in user may be the owner or may have
-   * VIEW/EDIT access through BusinessModelAccess.
-   */
   const access =
     await requireModelAccess(
       modelId,
@@ -250,23 +408,19 @@ export async function calculateMetrics(
     );
 
 
-  /*
-   * Working values belong to the model owner.
-   *
-   * This is important when another user has access to
-   * the model. We must load the owner's values rather
-   * than looking for WorkingValue rows belonging to
-   * the logged-in user.
-   */
   const dataOwnerId =
     access.model.createdBy;
 
 
-  /*
-   * Load active inputs.
-   */
-  const inputs =
-    await prisma.inputDefinition.findMany({
+  const [
+    inputs,
+    periods,
+    periodValues,
+    workingValues,
+    metrics,
+  ] = await Promise.all([
+
+    prisma.inputDefinition.findMany({
 
       where: {
 
@@ -286,14 +440,67 @@ export async function calculateMetrics(
 
       },
 
-    });
+    }),
 
+    prisma.modelPeriod.findMany({
 
-  /*
-   * Load the model owner's working values.
-   */
-  const workingValues =
-    await prisma.workingValue.findMany({
+      where: {
+
+        modelId,
+
+        status: "ACTIVE",
+
+      },
+
+      orderBy: {
+
+        sortOrder: "asc",
+
+      },
+
+      select: {
+
+        id: true,
+
+        name: true,
+
+        key: true,
+
+        sortOrder: true,
+
+      },
+
+    }),
+
+    prisma.periodValue.findMany({
+
+      where: {
+
+        period: {
+          modelId,
+          status: "ACTIVE",
+        },
+
+        input: {
+          modelId,
+          status: "ACTIVE",
+        },
+
+      },
+
+      select: {
+
+        inputId: true,
+
+        periodId: true,
+
+        value: true,
+
+      },
+
+    }),
+
+    prisma.workingValue.findMany({
 
       where: {
 
@@ -317,79 +524,9 @@ export async function calculateMetrics(
 
       },
 
-    });
+    }),
 
-
-  const inputById =
-    new Map(
-      inputs.map(
-        (input) => [
-          input.id,
-          input,
-        ]
-      )
-    );
-
-
-  const inputVariables:
-    Record<string, number> = {};
-
-
-  for (
-    const workingValue
-    of workingValues
-  ) {
-
-    const input =
-      inputById.get(
-        workingValue.inputId
-      );
-
-
-    if (!input) {
-      continue;
-    }
-
-
-    /*
-     * Empty values are ignored.
-     */
-    if (
-      workingValue.value.trim() === ""
-    ) {
-      continue;
-    }
-
-
-    const numericValue =
-      Number(
-        workingValue.value
-      );
-
-
-    /*
-     * Only numeric values participate in
-     * formula calculations.
-     */
-    if (
-      Number.isFinite(
-        numericValue
-      )
-    ) {
-
-      inputVariables[input.key] =
-        numericValue;
-
-    }
-
-  }
-
-
-  /*
-   * Load active metric definitions.
-   */
-  const metrics =
-    await prisma.metricDefinition.findMany({
+    prisma.metricDefinition.findMany({
 
       where: {
 
@@ -423,117 +560,303 @@ export async function calculateMetrics(
 
       },
 
-    });
+    }),
+
+  ]);
 
 
-  const results:
-    CalculatedMetric[] = [];
+  const inputById =
+    new Map(
+      inputs.map(
+        input => [
+          input.id,
+          input,
+        ]
+      )
+    );
 
 
   /*
-   * Calculate each metric individually so that one
-   * invalid formula does not prevent all other metrics
-   * from being displayed.
+   * Period-based variables.
    */
+  const inputVariablesByPeriod =
+    new Map<
+      string,
+      Record<string, number>
+    >();
+
+
   for (
-    const metric
-    of metrics
+    const period
+    of periods
   ) {
 
-    try {
+    inputVariablesByPeriod.set(
+      period.id,
+      {}
+    );
 
-      const values =
-        calculateMetricValues(
-          metrics,
-          inputVariables
-        );
+  }
 
 
-      results.push({
+  for (
+    const periodValue
+    of periodValues
+  ) {
 
-        id:
-          metric.id,
+    const input =
+      inputById.get(
+        periodValue.inputId
+      );
 
-        name:
-          metric.name,
 
-        key:
-          metric.key,
+    if (!input) {
+      continue;
+    }
 
-        type:
-          metric.type,
 
-        unit:
-          metric.unit,
+    if (
+      input.type === "Text"
+    ) {
+      continue;
+    }
 
-        category:
-          metric.category,
 
-        formula:
-          metric.formula,
+    const numericValue =
+      Number(
+        periodValue.value
+      );
 
-        value:
-          values.get(
-            metric.key
-          ) ?? null,
 
-        error:
-          null,
+    if (
+      !Number.isFinite(
+        numericValue
+      )
+    ) {
+      continue;
+    }
 
-      });
 
-    } catch (error) {
+    const variables =
+      inputVariablesByPeriod.get(
+        periodValue.periodId
+      );
 
-      results.push({
 
-        id:
-          metric.id,
+    if (!variables) {
+      continue;
+    }
 
-        name:
-          metric.name,
 
-        key:
-          metric.key,
+    variables[
+      input.key
+    ] =
+      numericValue;
 
-        type:
-          metric.type,
+  }
 
-        unit:
-          metric.unit,
 
-        category:
-          metric.category,
+  /*
+   * Preserve existing model-level WorkingValue
+   * behaviour for formulas that don't have a
+   * period value.
+   *
+   * Period values take precedence.
+   */
+  const workingVariables:
+    Record<string, number> = {};
 
-        formula:
-          metric.formula,
 
-        value:
-          null,
+  for (
+    const workingValue
+    of workingValues
+  ) {
 
-        error:
-          error instanceof Error
-            ? error.message
-            : "Unable to calculate metric.",
+    const input =
+      inputById.get(
+        workingValue.inputId
+      );
 
-      });
+
+    if (!input) {
+      continue;
+    }
+
+
+    if (
+      workingValue.value.trim() === ""
+    ) {
+      continue;
+    }
+
+
+    const numericValue =
+      Number(
+        workingValue.value
+      );
+
+
+    if (
+      !Number.isFinite(
+        numericValue
+      )
+    ) {
+      continue;
+    }
+
+
+    workingVariables[
+      input.key
+    ] =
+      numericValue;
+
+  }
+
+
+  /*
+   * Apply model-level values as fallback for every
+   * period. This lets Hourly Rate remain model-level
+   * until you decide to make it period-based.
+   */
+  for (
+    const period
+    of periods
+  ) {
+
+    const variables =
+      inputVariablesByPeriod.get(
+        period.id
+      );
+
+
+    if (!variables) {
+      continue;
+    }
+
+
+    for (
+      const [
+        key,
+        value,
+      ]
+      of Object.entries(
+        workingVariables
+      )
+    ) {
+
+      if (
+        variables[key] === undefined
+      ) {
+
+        variables[key] =
+          value;
+
+      }
 
     }
 
   }
 
 
-  return results;
+  const metricValues =
+    calculateMetricValues(
+      metrics,
+      inputVariablesByPeriod,
+      periods
+    );
+
+
+  return metrics.map(
+    metric => {
+
+      const values =
+        periods.map(
+          period => {
+
+            const metricValue =
+              metricValues
+                .get(metric.key)
+                ?.get(period.id);
+
+
+            return {
+
+              periodId:
+                period.id,
+
+              periodName:
+                period.name,
+
+              periodKey:
+                period.key,
+
+              value:
+                metricValue ??
+                null,
+
+              error:
+                null,
+
+            };
+
+          }
+        );
+
+
+      const latest =
+        values[
+          values.length - 1
+        ];
+
+
+      return {
+
+        id:
+          metric.id,
+
+        name:
+          metric.name,
+
+        key:
+          metric.key,
+
+        type:
+          metric.type,
+
+        unit:
+          metric.unit,
+
+        category:
+          metric.category,
+
+        formula:
+          metric.formula,
+
+        value:
+          latest?.value ??
+          null,
+
+        error:
+          null,
+
+        periodValues:
+          values,
+
+      };
+
+    }
+  );
 
 }
 
 
-/**
- * Calculate metrics for a specific user's
- * scenario values.
+/*
+ * Existing scenario calculation API.
  *
- * Kept separate from calculateMetrics because
- * scenario values are owned by the scenario rather
- * than the model owner's WorkingValue rows.
+ * It remains scalar and therefore does not support
+ * CUMULATIVE() yet. This preserves the existing
+ * scenario contract while the main model becomes
+ * period-aware.
  */
 export async function calculateMetricsFromValues(
   modelId: string,
@@ -585,285 +908,10 @@ export async function calculateMetricsFromValues(
     });
 
 
-  const values =
-    calculateMetricValues(
-      metrics,
-      inputVariables
-    );
-
-
-  return metrics.map(
-    (metric) => ({
-
-      id:
-        metric.id,
-
-      name:
-        metric.name,
-
-      key:
-        metric.key,
-
-      type:
-        metric.type,
-
-      unit:
-        metric.unit,
-
-      category:
-        metric.category,
-
-      formula:
-        metric.formula,
-
-      value:
-        values.get(
-          metric.key
-        ) ?? null,
-
-      error:
-        null,
-
-    })
-  );
-
-}
-/**
- * Calculate metrics using the values stored in a SavedModel.
- *
- * This uses the exact same metric dependency/calculation logic
- * as the normal working-model calculation, but takes its input
- * values from the saved snapshot instead of WorkingValue.
- */
-export async function calculateSavedModelMetrics(
-  savedModelId: string,
-  userId: string
-): Promise<CalculatedMetric[]> {
-
-  const savedModel =
-    await prisma.savedModel.findFirst({
-
-      where: {
-
-        id: savedModelId,
-
-        createdBy: userId,
-
-      },
-
-      select: {
-
-        id: true,
-
-        modelId: true,
-
-        model: {
-
-          select: {
-
-            id: true,
-
-            createdBy: true,
-
-          },
-
-        },
-
-      },
-
-    });
-
-
-  if (!savedModel) {
-
-    throw new Error(
-      "Saved model not found or access denied."
-    );
-
-  }
-
-
-  /*
-   * Load all active inputs belonging to the model.
-   */
-  const inputs =
-    await prisma.inputDefinition.findMany({
-
-      where: {
-
-        modelId:
-          savedModel.modelId,
-
-        status: "ACTIVE",
-
-      },
-
-      select: {
-
-        id: true,
-
-        key: true,
-
-        type: true,
-
-      },
-
-    });
-
-
-  /*
-   * Load the saved values belonging to this snapshot.
-   */
-  const savedValues =
-    await prisma.savedModelValue.findMany({
-
-      where: {
-
-        savedModelId:
-          savedModelId,
-
-        input: {
-
-          modelId:
-            savedModel.modelId,
-
-          status: "ACTIVE",
-
-        },
-
-      },
-
-      select: {
-
-        inputId: true,
-
-        value: true,
-
-      },
-
-    });
-
-
-  const inputById =
-    new Map(
-      inputs.map(
-        (input) => [
-          input.id,
-          input,
-        ]
-      )
-    );
-
-
-  /*
-   * Convert saved values into formula variables.
-   */
-  const inputVariables:
-    Record<string, number> = {};
-
-
-  for (
-    const savedValue
-    of savedValues
-  ) {
-
-    const input =
-      inputById.get(
-        savedValue.inputId
-      );
-
-
-    if (!input) {
-      continue;
-    }
-
-
-    /*
-     * Text inputs cannot participate in numeric formulas.
-     */
-    if (
-      input.type === "Text"
-    ) {
-      continue;
-    }
-
-
-    const numericValue =
-      Number(
-        savedValue.value
-      );
-
-
-    if (
-      Number.isFinite(
-        numericValue
-      )
-    ) {
-
-      inputVariables[
-        input.key
-      ] =
-        numericValue;
-
-    }
-
-  }
-
-
-  /*
-   * Load active metric definitions.
-   */
-  const metrics =
-    await prisma.metricDefinition.findMany({
-
-      where: {
-
-        modelId:
-          savedModel.modelId,
-
-        status: "ACTIVE",
-
-      },
-
-      select: {
-
-        id: true,
-
-        name: true,
-
-        key: true,
-
-        type: true,
-
-        unit: true,
-
-        category: true,
-
-        formula: true,
-
-      },
-
-      orderBy: {
-
-        name: "asc",
-
-      },
-
-    });
-
-
-  const metricValues =
-    new Map<string, number>();
-
-
-  const calculating =
-    new Set<string>();
-
-
   const metricByKey =
     new Map(
       metrics.map(
-        (metric) => [
+        metric => [
           metric.key,
           metric,
         ]
@@ -871,31 +919,29 @@ export async function calculateSavedModelMetrics(
     );
 
 
+  const values =
+    new Map<string, number>();
+
+
+  const calculating =
+    new Set<string>();
+
+
   function calculateMetric(
     key: string
   ): number {
 
-    /*
-     * Return a previously calculated metric.
-     */
     const cached =
-      metricValues.get(
-        key
-      );
+      values.get(key);
 
 
     if (
       cached !== undefined
     ) {
-
       return cached;
-
     }
 
 
-    /*
-     * Input values are the base variables.
-     */
     const inputValue =
       inputVariables[key];
 
@@ -903,16 +949,12 @@ export async function calculateSavedModelMetrics(
     if (
       inputValue !== undefined
     ) {
-
       return inputValue;
-
     }
 
 
     const metric =
-      metricByKey.get(
-        key
-      );
+      metricByKey.get(key);
 
 
     if (!metric) {
@@ -924,9 +966,6 @@ export async function calculateSavedModelMetrics(
     }
 
 
-    /*
-     * Detect circular metric dependencies.
-     */
     if (
       calculating.has(key)
     ) {
@@ -938,9 +977,7 @@ export async function calculateSavedModelMetrics(
     }
 
 
-    calculating.add(
-      key
-    );
+    calculating.add(key);
 
 
     try {
@@ -949,20 +986,14 @@ export async function calculateSavedModelMetrics(
         Record<string, number> = {};
 
 
-      const identifiers =
-        extractIdentifiers(
-          metric.formula
-        );
-
-
       for (
         const identifier
-        of identifiers
+        of getFormulaIdentifiers(
+          metric.formula
+        )
       ) {
 
-        variables[
-          identifier
-        ] =
+        variables[identifier] =
           calculateMetric(
             identifier
           );
@@ -977,20 +1008,7 @@ export async function calculateSavedModelMetrics(
         );
 
 
-      if (
-        !Number.isFinite(
-          value
-        )
-      ) {
-
-        throw new Error(
-          `Metric "${metric.name}" produced an invalid result.`
-        );
-
-      }
-
-
-      metricValues.set(
+      values.set(
         key,
         value
       );
@@ -1000,31 +1018,17 @@ export async function calculateSavedModelMetrics(
 
     } finally {
 
-      calculating.delete(
-        key
-      );
+      calculating.delete(key);
 
     }
 
   }
 
 
-  /*
-   * Calculate each metric independently.
-   *
-   * If one metric fails, keep the error on that metric rather
-   * than preventing the remaining metrics from being returned.
-   */
   return metrics.map(
-    (metric) => {
+    metric => {
 
       try {
-
-        const value =
-          calculateMetric(
-            metric.key
-          );
-
 
         return {
 
@@ -1049,10 +1053,16 @@ export async function calculateSavedModelMetrics(
           formula:
             metric.formula,
 
-          value,
+          value:
+            calculateMetric(
+              metric.key
+            ),
 
           error:
             null,
+
+          periodValues:
+            [],
 
         };
 
@@ -1088,6 +1098,9 @@ export async function calculateSavedModelMetrics(
             error instanceof Error
               ? error.message
               : "Unable to calculate metric.",
+
+          periodValues:
+            [],
 
         };
 

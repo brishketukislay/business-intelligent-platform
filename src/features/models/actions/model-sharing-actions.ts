@@ -328,38 +328,81 @@ export async function getModelShares(
   );
 
 
-  return prisma.businessModelAccess.findMany({
+  const shares =
+    await prisma.businessModelAccess.findMany({
 
-    where: {
-      modelId,
-    },
+      where: {
+        modelId,
+      },
 
-    include: {
+      include: {
 
-      user: {
+        user: {
 
-        select: {
+          select: {
 
-          id: true,
+            id: true,
 
-          name: true,
+            name: true,
 
-          email: true,
+            email: true,
 
-          role: true,
+            role: true,
 
-          status: true,
+            status: true,
+
+          },
 
         },
 
       },
 
-    },
+      orderBy: {
+        createdAt: "asc",
+      },
 
-    orderBy: {
-      createdAt: "asc",
-    },
+    });
 
-  });
+
+  return shares.map(
+    (share) => ({
+
+      id:
+        share.id,
+
+      modelId:
+        share.modelId,
+
+      userId:
+        share.userId,
+
+      permission:
+        share.permission as "VIEW" | "EDIT",
+
+      createdAt:
+        share.createdAt,
+
+      user: {
+
+  id:
+    share.user.id,
+
+  name:
+    share.user.name,
+
+  email:
+    share.user.email,
+
+  role:
+    share.user.role,
+
+  status:
+    share.user.status,
+
+},
+
+
+    })
+  );
 
 }
