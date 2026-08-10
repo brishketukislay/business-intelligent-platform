@@ -1,6 +1,8 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import {
+  revalidatePath,
+} from "next/cache";
 
 import {
   requireCurrentUser,
@@ -36,7 +38,7 @@ function formDataToModel(
     status:
       String(
         formData.get("status") ?? "ACTIVE"
-      ),
+      ) as "ACTIVE" | "INACTIVE",
 
   };
 
@@ -101,7 +103,9 @@ export async function createBusinessModelAction(
       success: false,
 
       error:
-        "Unable to create business model.",
+        error instanceof Error
+          ? error.message
+          : "Unable to create business model.",
 
     };
 
@@ -141,31 +145,17 @@ export async function updateBusinessModelAction(
 
   try {
 
-    const updated =
-      await updateBusinessModel(
-        id,
-        result.data,
-        user.id
-      );
-
-
-    if (updated.count === 0) {
-
-      return {
-
-        success: false,
-
-        error:
-          "Business model not found or access denied.",
-
-      };
-
-    }
+    await updateBusinessModel(
+      id,
+      result.data,
+      user.id
+    );
 
 
     revalidatePath(
       "/models"
     );
+
 
     revalidatePath(
       `/models/${id}`
@@ -189,7 +179,9 @@ export async function updateBusinessModelAction(
       success: false,
 
       error:
-        "Unable to update business model.",
+        error instanceof Error
+          ? error.message
+          : "Unable to update business model.",
 
     };
 
@@ -208,30 +200,16 @@ export async function deactivateBusinessModelAction(
 
   try {
 
-    const updated =
-      await deactivateBusinessModel(
-        id,
-        user.id
-      );
-
-
-    if (updated.count === 0) {
-
-      return {
-
-        success: false,
-
-        error:
-          "Business model not found or access denied.",
-
-      };
-
-    }
+    await deactivateBusinessModel(
+      id,
+      user.id
+    );
 
 
     revalidatePath(
       "/models"
     );
+
 
     revalidatePath(
       `/models/${id}`
@@ -255,11 +233,12 @@ export async function deactivateBusinessModelAction(
       success: false,
 
       error:
-        "Unable to deactivate business model.",
+        error instanceof Error
+          ? error.message
+          : "Unable to deactivate business model.",
 
     };
 
   }
 
 }
-

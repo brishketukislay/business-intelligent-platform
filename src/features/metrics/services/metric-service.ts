@@ -1,214 +1,247 @@
 import {
-prisma,
+  prisma,
 } from "@/lib/prisma";
 
+import {
+  requireModelAccess,
+  requireModelEditAccess,
+} from "@/lib/model-access";
+
 import type {
-MetricDefinitionInput,
+  MetricDefinitionInput,
 } from "../schemas/metric-schema";
 
+
 export async function getMetricDefinitions(
-modelId: string,
-userId: string
+  modelId: string,
+  userId: string
 ) {
 
-return prisma.metricDefinition.findMany({
-
-where: {
-
-  modelId,
-
-  model: {
-    createdBy: userId,
-  },
-
-},
-
-orderBy: {
-  createdAt: "desc",
-},
+  /*
+   * Anyone with access to the model can view
+   * its metric definitions.
+   */
+  await requireModelAccess(
+    modelId,
+    userId
+  );
 
 
-});
+  return prisma.metricDefinition.findMany({
+
+    where: {
+
+      modelId,
+
+    },
+
+    orderBy: {
+
+      name: "asc",
+
+    },
+
+  });
 
 }
+
 
 export async function createMetricDefinition(
-data: MetricDefinitionInput,
-userId: string
+  data: MetricDefinitionInput,
+  userId: string
 ) {
 
-const model =
-await prisma.businessModel.findFirst({
-
-  where: {
-
-    id: data.modelId,
-
-    createdBy: userId,
-
-  },
-
-  select: {
-    id: true,
-  },
-
-});
-
-
-if (!model) {
-
-throw new Error(
-  "Business model not found or access denied."
-);
-
-
-}
-
-return prisma.metricDefinition.create({
-
-data: {
-
-  modelId:
+  /*
+   * Creating/editing metrics requires EDIT access.
+   */
+  await requireModelEditAccess(
     data.modelId,
-
-  name:
-    data.name,
-
-  key:
-    data.key,
-
-  type:
-    data.type,
-
-  unit:
-    data.unit || null,
-
-  category:
-    data.category || null,
-
-  formula:
-    data.formula,
-
-},
+    userId
+  );
 
 
-});
+  return prisma.metricDefinition.create({
+
+    data: {
+
+      modelId:
+        data.modelId,
+
+      name:
+        data.name,
+
+      key:
+        data.key,
+
+      type:
+        data.type,
+
+      unit:
+        data.unit || null,
+
+      category:
+        data.category || null,
+
+      formula:
+        data.formula,
+
+    },
+
+  });
 
 }
+
 
 export async function updateMetricDefinition(
-id: string,
-data: MetricDefinitionInput,
-userId: string
+  id: string,
+  data: MetricDefinitionInput,
+  userId: string
 ) {
 
-const metric =
-await prisma.metricDefinition.findFirst({
+  const metric =
+    await prisma.metricDefinition.findUnique({
 
-  where: {
+      where: {
 
-    id,
+        id,
 
-    model: {
-      createdBy: userId,
+      },
+
+      select: {
+
+        id: true,
+
+        modelId: true,
+
+      },
+
+    });
+
+
+  if (!metric) {
+
+    throw new Error(
+      "Metric definition not found."
+    );
+
+  }
+
+
+  /*
+   * Editing the metric requires EDIT access
+   * to the model that owns it.
+   */
+  await requireModelEditAccess(
+    metric.modelId,
+    userId
+  );
+
+
+  /*
+   * Prevent a metric from being moved to a
+   * different model through the update payload.
+   */
+  if (
+    data.modelId !== metric.modelId
+  ) {
+
+    throw new Error(
+      "Metric cannot be moved to another business model."
+    );
+
+  }
+
+
+  return prisma.metricDefinition.update({
+
+    where: {
+
+      id:
+        metric.id,
+
     },
 
-  },
+    data: {
 
-  select: {
-    id: true,
-  },
+      name:
+        data.name,
 
-});
+      key:
+        data.key,
 
+      type:
+        data.type,
 
-if (!metric) {
+      unit:
+        data.unit || null,
 
-throw new Error(
-  "Metric definition not found or access denied."
-);
+      category:
+        data.category || null,
 
+      formula:
+        data.formula,
 
-}
+    },
 
-return prisma.metricDefinition.update({
-
-where: {
-  id,
-},
-
-data: {
-
-  name:
-    data.name,
-
-  key:
-    data.key,
-
-  type:
-    data.type,
-
-  unit:
-    data.unit || null,
-
-  category:
-    data.category || null,
-
-  formula:
-    data.formula,
-
-},
-
-
-});
+  });
 
 }
+
 
 export async function deactivateMetricDefinition(
-id: string,
-userId: string
+  id: string,
+  userId: string
 ) {
 
-const metric =
-await prisma.metricDefinition.findFirst({
+  const metric =
+    await prisma.metricDefinition.findUnique({
 
-  where: {
+      where: {
 
-    id,
+        id,
 
-    model: {
-      createdBy: userId,
+      },
+
+      select: {
+
+        id: true,
+
+        modelId: true,
+
+      },
+
+    });
+
+
+  if (!metric) {
+
+    throw new Error(
+      "Metric definition not found."
+    );
+
+  }
+
+
+  await requireModelEditAccess(
+    metric.modelId,
+    userId
+  );
+
+
+  return prisma.metricDefinition.update({
+
+    where: {
+
+      id:
+        metric.id,
+
     },
 
-  },
+    data: {
+      status:
+        "INACTIVE",
+    },
 
-  select: {
-    id: true,
-  },
-
-});
-
-
-if (!metric) {
-
-throw new Error(
-  "Metric definition not found or access denied."
-);
-
-
-}
-
-return prisma.metricDefinition.update({
-
-where: {
-  id,
-},
-
-data: {
-  status: "INACTIVE",
-},
-
-
-});
+  });
 
 }

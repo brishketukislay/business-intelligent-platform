@@ -1,0 +1,260 @@
+"use server";
+
+import {
+  redirect,
+} from "next/navigation";
+
+import {
+  auth,
+} from "@/auth";
+
+import {
+  prisma,
+} from "@/lib/prisma";
+
+
+async function requireAdmin() {
+
+  const session =
+    await auth();
+
+
+  if (!session?.user?.id) {
+    redirect("/login");
+  }
+
+
+  if (
+    session.user.role !== "ADMIN"
+  ) {
+    redirect("/dashboard");
+  }
+
+
+  return session.user;
+
+}
+
+
+export async function approveUser(
+  formData: FormData
+) {
+
+  await requireAdmin();
+
+
+  const userId =
+    String(
+      formData.get("userId") ?? ""
+    ).trim();
+
+
+  if (!userId) {
+    throw new Error(
+      "User ID is required."
+    );
+  }
+
+
+  await prisma.user.update({
+
+    where: {
+      id: userId,
+    },
+
+    data: {
+      status: "ACTIVE",
+    },
+
+  });
+
+
+  redirect("/admin/users");
+
+}
+
+
+export async function disableUser(
+  formData: FormData
+) {
+
+  const session =
+    await requireAdmin();
+
+
+  const userId =
+    String(
+      formData.get("userId") ?? ""
+    ).trim();
+
+
+  if (!userId) {
+    throw new Error(
+      "User ID is required."
+    );
+  }
+
+
+  if (userId === session.id) {
+    throw new Error(
+      "You cannot disable your own account."
+    );
+  }
+
+
+  await prisma.user.update({
+
+    where: {
+      id: userId,
+    },
+
+    data: {
+      status: "DISABLED",
+    },
+
+  });
+
+
+  redirect("/admin/users");
+
+}
+
+
+export async function enableUser(
+  formData: FormData
+) {
+
+  await requireAdmin();
+
+
+  const userId =
+    String(
+      formData.get("userId") ?? ""
+    ).trim();
+
+
+  if (!userId) {
+    throw new Error(
+      "User ID is required."
+    );
+  }
+
+
+  await prisma.user.update({
+
+    where: {
+      id: userId,
+    },
+
+    data: {
+      status: "ACTIVE",
+    },
+
+  });
+
+
+  redirect("/admin/users");
+
+}
+export async function makeAdmin(
+  formData: FormData
+) {
+
+  const session =
+    await requireAdmin();
+
+
+  const userId =
+    String(
+      formData.get("userId") ?? ""
+    ).trim();
+
+
+  if (!userId) {
+
+    throw new Error(
+      "User ID is required."
+    );
+
+  }
+
+
+  if (
+    userId === session.id
+  ) {
+
+    throw new Error(
+      "You cannot change your own role."
+    );
+
+  }
+
+
+  await prisma.user.update({
+
+    where: {
+      id: userId,
+    },
+
+    data: {
+      role: "ADMIN",
+    },
+
+  });
+
+
+  redirect("/admin/users");
+
+}
+
+
+export async function makeUser(
+  formData: FormData
+) {
+
+  const session =
+    await requireAdmin();
+
+
+  const userId =
+    String(
+      formData.get("userId") ?? ""
+    ).trim();
+
+
+  if (!userId) {
+
+    throw new Error(
+      "User ID is required."
+    );
+
+  }
+
+
+  if (
+    userId === session.id
+  ) {
+
+    throw new Error(
+      "You cannot change your own role."
+    );
+
+  }
+
+
+  await prisma.user.update({
+
+    where: {
+      id: userId,
+    },
+
+    data: {
+      role: "USER",
+    },
+
+  });
+
+
+  redirect("/admin/users");
+
+}

@@ -3,6 +3,10 @@ import {
 } from "@/lib/prisma";
 
 import {
+  requireModelAccess,
+} from "@/lib/model-access";
+
+import {
   calculateScenarioMetrics,
 } from "./scenario-calculation-service";
 
@@ -42,38 +46,30 @@ export async function compareScenarios(
   metrics: ScenarioComparisonMetric[];
 }> {
 
-  const model =
-    await prisma.businessModel.findFirst({
-
-      where: {
-        id: modelId,
-        createdBy: userId,
-      },
-
-      select: {
-        id: true,
-      },
-
-    });
+  /*
+   * Shared-model users must be allowed to compare
+   * scenarios as long as they have model access.
+   */
+  await requireModelAccess(
+    modelId,
+    userId
+  );
 
 
-  if (!model) {
-
-    throw new Error(
-      "Business model not found or access denied."
-    );
-
-  }
-
-
+  /*
+   * Get all active scenarios belonging to this model.
+   *
+   * Do NOT check createdBy here.
+   *
+   * A user with access to a shared model should be
+   * able to compare its scenarios.
+   */
   const scenarios =
     await prisma.scenario.findMany({
 
       where: {
 
         modelId,
-
-        createdBy: userId,
 
         status: "ACTIVE",
 
@@ -99,15 +95,23 @@ export async function compareScenarios(
   if (scenarios.length === 0) {
 
     return {
+
       scenarios: [],
+
       metrics: [],
+
     };
 
   }
 
 
+  /*
+   * Calculate every scenario using the scenario's
+   * own input values.
+   */
   const calculated =
     await Promise.all(
+
       scenarios.map(
         async (scenario) => ({
 
@@ -121,11 +125,15 @@ export async function compareScenarios(
 
         })
       )
+
     );
 
 
   const metricMap =
-    new Map<string, ScenarioComparisonMetric>();
+    new Map<
+      string,
+      ScenarioComparisonMetric
+    >();
 
 
   for (
@@ -139,28 +147,37 @@ export async function compareScenarios(
     ) {
 
       let comparison =
-        metricMap.get(metric.id);
+        metricMap.get(
+          metric.id
+        );
 
 
       if (!comparison) {
 
         comparison = {
 
-          id: metric.id,
+          id:
+            metric.id,
 
-          name: metric.name,
+          name:
+            metric.name,
 
-          key: metric.key,
+          key:
+            metric.key,
 
-          type: metric.type,
+          type:
+            metric.type,
 
-          unit: metric.unit,
+          unit:
+            metric.unit,
 
-          formula: metric.formula,
+          formula:
+            metric.formula,
 
           values: [],
 
         };
+
 
         metricMap.set(
           metric.id,

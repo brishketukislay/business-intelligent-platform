@@ -9,6 +9,18 @@ import {
 } from "@/features/models/services/model-service";
 
 import {
+  getModelShares,
+} from "@/features/models/actions/model-sharing-actions";
+
+import {
+  ModelSharingDialog,
+} from "@/features/models/components/model-sharing-dialog";
+
+import {
+  ModelEditDialog,
+} from "@/features/models/components/model-edit-dialog";
+
+import {
   requireCurrentUser,
 } from "@/lib/current-user";
 
@@ -54,17 +66,61 @@ export default async function ModelDetailPage({
   }
 
 
+  let shares:
+    Awaited<
+      ReturnType<typeof getModelShares>
+    > = [];
+
+
+  let canManageSharing =
+    false;
+
+
+  try {
+
+    shares =
+      await getModelShares(
+        modelId,
+        user.id
+      );
+
+    canManageSharing =
+      true;
+
+  } catch {
+
+    canManageSharing =
+      false;
+
+  }
+
+
   return (
 
     <div className="space-y-8">
 
-      <div className="flex items-start justify-between gap-6">
+      <div
+        className="
+          flex
+          flex-col
+          gap-4
+          lg:flex-row
+          lg:items-start
+          lg:justify-between
+        "
+      >
 
         <div className="space-y-2">
 
           <div className="flex items-center gap-3">
 
-            <h1 className="text-2xl font-semibold tracking-tight">
+            <h1
+              className="
+                text-2xl
+                font-semibold
+                tracking-tight
+              "
+            >
               {model.name}
             </h1>
 
@@ -82,7 +138,13 @@ export default async function ModelDetailPage({
           </div>
 
 
-          <p className="max-w-2xl text-sm text-muted-foreground">
+          <p
+            className="
+              max-w-2xl
+              text-sm
+              text-muted-foreground
+            "
+          >
             {model.description ??
               "No description provided."}
           </p>
@@ -90,80 +152,162 @@ export default async function ModelDetailPage({
         </div>
 
 
-        <Link
-          href={`/models/${model.id}/edit`}
-          className="inline-flex h-9 items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+        <div
+          className="
+            flex
+            shrink-0
+            items-center
+            gap-2
+          "
         >
-          Edit Model
-        </Link>
+
+          {canManageSharing && (
+
+            <ModelSharingDialog
+              modelId={model.id}
+              currentUserId={user.id}
+              shares={shares}
+            />
+
+          )}
+
+
+          <ModelEditDialog
+            model={model}
+          />
+
+        </div>
 
       </div>
 
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div
+        className="
+          grid
+          gap-4
+          md:grid-cols-2
+          xl:grid-cols-4
+        "
+      >
 
         <Link
           href={`/models/${model.id}/inputs`}
-          className="rounded-lg border bg-background p-6 shadow-sm transition-colors hover:bg-muted/50"
+          className="
+            rounded-lg
+            border
+            bg-background
+            p-6
+            shadow-sm
+            transition-colors
+            hover:bg-muted/50
+          "
         >
 
           <h2 className="font-semibold">
             Inputs
           </h2>
 
-          <p className="mt-2 text-sm text-muted-foreground">
+          <p
+            className="
+              mt-2
+              text-sm
+              text-muted-foreground
+            "
+          >
             Configure input definitions for this model.
           </p>
 
         </Link>
+
+
         <Link
-  href={`/models/${model.id}/saved`}
-  className="rounded-lg border bg-background p-6 shadow-sm transition-colors hover:bg-muted/50"
->
+          href={`/models/${model.id}/saved`}
+          className="
+            rounded-lg
+            border
+            bg-background
+            p-6
+            shadow-sm
+            transition-colors
+            hover:bg-muted/50
+          "
+        >
 
-  <h2 className="font-semibold">
-    Saved Models
-  </h2>
+          <h2 className="font-semibold">
+            Saved Models
+          </h2>
 
-  <p className="mt-2 text-sm text-muted-foreground">
-    View saved snapshots of this model.
-  </p>
+          <p
+            className="
+              mt-2
+              text-sm
+              text-muted-foreground
+            "
+          >
+            View saved snapshots of this model.
+          </p>
 
-</Link>
-
-
-<Link
-  href={`/models/${model.id}/metrics`}
-  className="rounded-lg border bg-background p-6 shadow-sm transition-colors hover:bg-muted/50"
->
-
-  <h2 className="font-semibold">
-    Metrics
-  </h2>
-
-  <p className="mt-2 text-sm text-muted-foreground">
-    Configure calculated metrics for this model.
-  </p>
-
-</Link>
+        </Link>
 
 
+        <Link
+          href={`/models/${model.id}/metrics`}
+          className="
+            rounded-lg
+            border
+            bg-background
+            p-6
+            shadow-sm
+            transition-colors
+            hover:bg-muted/50
+          "
+        >
 
-<Link
-  href={`/models/${model.id}/scenarios`}
-  className="rounded-lg border bg-background p-6 shadow-sm transition-colors hover:bg-muted/50"
->
+          <h2 className="font-semibold">
+            Metrics
+          </h2>
 
-  <h2 className="font-semibold">
-    Scenarios
-  </h2>
+          <p
+            className="
+              mt-2
+              text-sm
+              text-muted-foreground
+            "
+          >
+            Configure calculated metrics for this model.
+          </p>
 
-  <p className="mt-2 text-sm text-muted-foreground">
-    Create alternative assumptions and compare outcomes.
-  </p>
+        </Link>
 
-</Link>
 
+        <Link
+          href={`/models/${model.id}/scenarios`}
+          className="
+            rounded-lg
+            border
+            bg-background
+            p-6
+            shadow-sm
+            transition-colors
+            hover:bg-muted/50
+          "
+        >
+
+          <h2 className="font-semibold">
+            Scenarios
+          </h2>
+
+          <p
+            className="
+              mt-2
+              text-sm
+              text-muted-foreground
+            "
+          >
+            Create alternative assumptions and compare outcomes.
+          </p>
+
+        </Link>
 
       </div>
 

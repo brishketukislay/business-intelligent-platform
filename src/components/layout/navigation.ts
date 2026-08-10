@@ -22,7 +22,7 @@ export const navigationItems = [
 
   {
     name: "Admin",
-    href: "/admin/inputs",
+    href: "/admin/users",
     icon: Shield,
   },
 
@@ -31,5 +31,11 @@ export const navigationItems = [
     href: "/settings",
     icon: Settings,
   },
+  
+  {
+  name: "Users",
+  href: "/admin/users",
+  icon: Shield,
+},
 
 ];

@@ -14,9 +14,15 @@ model User {
 
   email String @unique
 
+  passwordHash String?
+
   role String @default("USER")
 
+  status String @default("PENDING")
+
   createdAt DateTime @default(now())
+
+  resetTokens PasswordResetToken[]
 
   businessModels BusinessModel[]
 
@@ -25,6 +31,27 @@ model User {
   savedModels SavedModel[]
 
   scenarios Scenario[]
+
+  modelAccess BusinessModelAccess[]
+}
+
+model PasswordResetToken {
+  id String @id @default(cuid())
+
+  userId String
+
+  tokenHash String @unique
+
+  expiresAt DateTime
+
+  usedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 model BusinessModel {
@@ -51,6 +78,8 @@ model BusinessModel {
   savedModels SavedModel[]
 
   scenarios Scenario[]
+
+  access BusinessModelAccess[]
 }
 
 model InputDefinition {
@@ -212,4 +241,24 @@ model ScenarioValue {
 
   @@unique([scenarioId, inputId])
   @@index([scenarioId])
+}
+
+model BusinessModelAccess {
+  id String @id @default(cuid())
+
+  modelId String
+
+  userId String
+
+  permission String @default("VIEW")
+
+  createdAt DateTime @default(now())
+
+  model BusinessModel @relation(fields: [modelId], references: [id], onDelete: Cascade)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([modelId, userId])
+  @@index([modelId])
+  @@index([userId])
 }
