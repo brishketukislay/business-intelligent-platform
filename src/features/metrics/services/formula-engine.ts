@@ -230,6 +230,32 @@ function tokenize(
 }
 
 
+/*
+ * Return only identifiers that need to be resolved
+ * as normal formula variables.
+ *
+ * Function arguments are intentionally excluded.
+ *
+ * Example:
+ *
+ * CUMULATIVE(actual_burnt_hours)
+ *
+ * returns:
+ *
+ * []
+ *
+ * Whereas:
+ *
+ * annual_target / 12
+ *
+ * returns:
+ *
+ * ["annual_target"]
+ *
+ * This is important because CUMULATIVE() receives
+ * the input/metric key as a string and resolves it
+ * itself.
+ */
 export function getFormulaIdentifiers(
   formula: string
 ): string[] {
@@ -263,21 +289,95 @@ export function getFormulaIdentifiers(
 
 
     /*
-     * An identifier immediately followed by "("
-     * is a function name, not a variable.
+     * Function name.
      *
      * Example:
      *
-     * CUMULATIVE(actual_burnt_hours)
+     * CUMULATIVE(...)
      *
-     * returns only:
-     *
-     * actual_burnt_hours
+     * The function itself is not a variable.
      */
     if (
       nextToken?.type === "leftParen"
     ) {
       continue;
+    }
+    /*
+     * If this identifier is inside a function
+     * argument list, do not treat it as a normal
+     * formula variable.
+     *
+     * Example:
+     *
+     * CUMULATIVE(actual_burnt_hours)
+     *
+     * actual_burnt_hours is resolved by the
+     * CUMULATIVE function, not calculateMetric().
+     */
+    let depth = 0;
+
+
+    for (
+      let previousIndex = index - 1;
+      previousIndex >= 0;
+      previousIndex--
+    ) {
+
+      const previousToken =
+        tokens[previousIndex];
+
+
+      if (
+        previousToken.type === "rightParen"
+      ) {
+
+        depth++;
+
+        continue;
+
+      }
+
+
+      if (
+        previousToken.type === "leftParen"
+      ) {
+
+        if (depth > 0) {
+
+          depth--;
+
+          continue;
+
+        }
+
+
+        const functionNameToken =
+          tokens[previousIndex - 1];
+
+
+        if (
+          functionNameToken?.type === "identifier"
+        ) {
+
+          /*
+           * This identifier is an argument to a
+           * function call.
+           */
+          depth = -1;
+
+        }
+
+        break;
+
+      }
+
+    }
+
+
+    if (depth === -1) {
+
+      continue;
+
     }
 
 
