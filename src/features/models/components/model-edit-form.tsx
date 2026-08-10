@@ -76,58 +76,59 @@ export function ModelEditForm({
   );
 
 
-  async function handleSubmit(
-    formData: FormData
-  ) {
+async function handleSubmit(
+  formData: FormData
+) {
 
-    setIsSubmitting(true);
-    setError(null);
-
-
-    formData.set(
-      "status",
-      status
-    );
+  setIsSubmitting(true);
+  setError(null);
 
 
-    try {
-
-      const result =
-        await updateBusinessModelAction(
-          model.id,
-          formData
-        );
+  formData.set(
+    "status",
+    status
+  );
 
 
-      if (!result.success) {
+  try {
 
-        setError(
-          "Unable to update business model."
-        );
-
-        return;
-
-      }
-
-
-      window.location.href =
-        `/models/${model.id}`;
-
-    } catch (error) {
-
-      console.error(error);
-
-      setError(
-        "An unexpected error occurred."
+    const result =
+      await updateBusinessModelAction(
+        model.id,
+        formData
       );
 
-    } finally {
 
-      setIsSubmitting(false);
+    if (!result.success) {
+
+      setError(
+        "Unable to update business model."
+      );
+
+      return;
 
     }
 
+
+    window.location.href =
+      `/models/${model.id}`;
+
+  } catch (error) {
+
+    console.error(error);
+
+    setError(
+      "An unexpected error occurred."
+    );
+
+  } finally {
+
+    setIsSubmitting(false);
+
   }
+
+}
+
 
 
   return (

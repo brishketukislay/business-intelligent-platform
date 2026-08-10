@@ -2,6 +2,11 @@ import {
   prisma,
 } from "@/lib/prisma";
 
+import {
+  requireModelAccess,
+  requireModelEditAccess,
+} from "@/lib/model-access";
+
 
 export async function getScenarioInputs(
   scenarioId: string,
@@ -9,22 +14,16 @@ export async function getScenarioInputs(
 ) {
 
   const scenario =
-    await prisma.scenario.findFirst({
+    await prisma.scenario.findUnique({
 
       where: {
-
         id: scenarioId,
-
-        createdBy: userId,
-
       },
 
       select: {
-
         id: true,
-
         modelId: true,
-
+        status: true,
       },
 
     });
@@ -33,20 +32,54 @@ export async function getScenarioInputs(
   if (!scenario) {
 
     throw new Error(
-      "Scenario not found or access denied."
+      "Scenario not found."
     );
 
   }
 
 
+  if (
+    scenario.status !== "ACTIVE"
+  ) {
+
+    throw new Error(
+      "Scenario is inactive."
+    );
+
+  }
+
+
+  /*
+   * The user can be:
+   *
+   * - model owner
+   * - shared VIEW user
+   * - shared EDIT user
+   * - administrator
+   */
+  await requireModelAccess(
+    scenario.modelId,
+    userId
+  );
+
+
+  /*
+   * Load every active input belonging to the
+   * scenario's model.
+   *
+   * ScenarioValue contains the actual values
+   * for this scenario.
+   */
   const inputs =
     await prisma.inputDefinition.findMany({
 
       where: {
 
-        modelId: scenario.modelId,
+        modelId:
+          scenario.modelId,
 
-        status: "ACTIVE",
+        status:
+          "ACTIVE",
 
       },
 
@@ -55,7 +88,16 @@ export async function getScenarioInputs(
         scenarioValues: {
 
           where: {
-            scenarioId,
+
+            scenarioId:
+              scenario.id,
+
+          },
+
+          select: {
+
+            value: true,
+
           },
 
         },
@@ -64,7 +106,8 @@ export async function getScenarioInputs(
 
       orderBy: {
 
-        createdAt: "asc",
+        createdAt:
+          "asc",
 
       },
 
@@ -74,19 +117,26 @@ export async function getScenarioInputs(
   return inputs.map(
     (input) => ({
 
-      id: input.id,
+      id:
+        input.id,
 
-      modelId: input.modelId,
+      modelId:
+        input.modelId,
 
-      name: input.name,
+      name:
+        input.name,
 
-      key: input.key,
+      key:
+        input.key,
 
-      type: input.type,
+      type:
+        input.type,
 
-      unit: input.unit,
+      unit:
+        input.unit,
 
-      category: input.category,
+      category:
+        input.category,
 
       value:
         input.scenarioValues[0]?.value ??
@@ -105,22 +155,35 @@ export async function upsertScenarioValue(
   userId: string
 ) {
 
+  /*
+   * Find the scenario first.
+   *
+   * Do NOT require createdBy === userId.
+   *
+   * A shared EDIT user must be able to modify
+   * scenarios created by the model owner or
+   * another shared EDIT user.
+   */
   const scenario =
-    await prisma.scenario.findFirst({
+    await prisma.scenario.findUnique({
 
       where: {
 
-        id: scenarioId,
-
-        createdBy: userId,
+        id:
+          scenarioId,
 
       },
 
       select: {
 
-        id: true,
+        id:
+          true,
 
-        modelId: true,
+        modelId:
+          true,
+
+        status:
+          true,
 
       },
 
@@ -130,28 +193,60 @@ export async function upsertScenarioValue(
   if (!scenario) {
 
     throw new Error(
-      "Scenario not found or access denied."
+      "Scenario not found."
     );
 
   }
 
 
+  if (
+    scenario.status !== "ACTIVE"
+  ) {
+
+    throw new Error(
+      "Scenario is inactive."
+    );
+
+  }
+
+
+  /*
+   * Editing scenario values requires EDIT
+   * permission on the model.
+   */
+  await requireModelEditAccess(
+    scenario.modelId,
+    userId
+  );
+
+
+  /*
+   * Make absolutely sure the input belongs
+   * to the same model as the scenario.
+   */
   const input =
     await prisma.inputDefinition.findFirst({
 
       where: {
 
-        id: inputId,
+        id:
+          inputId,
 
-        modelId: scenario.modelId,
+        modelId:
+          scenario.modelId,
 
-        status: "ACTIVE",
+        status:
+          "ACTIVE",
 
       },
 
       select: {
 
-        id: true,
+        id:
+          true,
+
+        type:
+          true,
 
       },
 
@@ -161,12 +256,18 @@ export async function upsertScenarioValue(
   if (!input) {
 
     throw new Error(
-      "Input definition not found or access denied."
+      "Input definition not found."
     );
 
   }
 
 
+  /*
+   * Save the value against the scenario.
+   *
+   * This means all users with access to the
+   * model see the same scenario value.
+   */
   return prisma.scenarioValue.upsert({
 
     where: {
