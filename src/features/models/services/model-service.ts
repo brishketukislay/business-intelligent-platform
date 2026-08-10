@@ -2,19 +2,76 @@ import {
   prisma,
 } from "@/lib/prisma";
 
-import type {
-  BusinessModelInput,
-} from "../schemas/model-schema";
+import {
+  requireModelAccess,
+  requireModelEditAccess,
+} from "@/lib/model-access";
 
 
 export async function getBusinessModels(
   userId: string
 ) {
 
+  const user =
+    await prisma.user.findUnique({
+
+      where: {
+        id: userId,
+      },
+
+      select: {
+        id: true,
+        role: true,
+      },
+
+    });
+
+
+  if (!user) {
+    return [];
+  }
+
+
+  /*
+   * Administrators can see every model.
+   */
+  if (user.role === "ADMIN") {
+
+    return prisma.businessModel.findMany({
+
+      orderBy: {
+        createdAt: "desc",
+      },
+
+    });
+
+  }
+
+
+  /*
+   * Normal users can see models they own
+   * or models shared with them.
+   */
   return prisma.businessModel.findMany({
 
     where: {
-      createdBy: userId,
+
+      OR: [
+
+        {
+          createdBy: userId,
+        },
+
+        {
+          access: {
+            some: {
+              userId,
+            },
+          },
+        },
+
+      ],
+
     },
 
     orderBy: {
@@ -27,15 +84,21 @@ export async function getBusinessModels(
 
 
 export async function getBusinessModelById(
-  id: string,
+  modelId: string,
   userId: string
 ) {
 
-  return prisma.businessModel.findFirst({
+  const access =
+    await requireModelAccess(
+      modelId,
+      userId
+    );
+
+
+  return prisma.businessModel.findUnique({
 
     where: {
-      id,
-      createdBy: userId,
+      id: access.model.id,
     },
 
   });
@@ -44,22 +107,29 @@ export async function getBusinessModelById(
 
 
 export async function createBusinessModel(
-  data: BusinessModelInput,
-  createdBy: string
+  data: {
+    name: string;
+    description?: string;
+    status?: "ACTIVE" | "INACTIVE";
+  },
+  userId: string
 ) {
 
   return prisma.businessModel.create({
 
     data: {
 
-      name: data.name,
+      name:
+        data.name,
 
       description:
         data.description || null,
 
-      status: data.status,
+      status:
+        data.status || "ACTIVE",
 
-      createdBy,
+      createdBy:
+        userId,
 
     },
 
@@ -69,26 +139,37 @@ export async function createBusinessModel(
 
 
 export async function updateBusinessModel(
-  id: string,
-  data: BusinessModelInput,
+  modelId: string,
+  data: {
+    name: string;
+    description?: string;
+    status?: "ACTIVE" | "INACTIVE";
+  },
   userId: string
 ) {
 
-  return prisma.businessModel.updateMany({
+  await requireModelEditAccess(
+    modelId,
+    userId
+  );
+
+
+  return prisma.businessModel.update({
 
     where: {
-      id,
-      createdBy: userId,
+      id: modelId,
     },
 
     data: {
 
-      name: data.name,
+      name:
+        data.name,
 
       description:
         data.description || null,
 
-      status: data.status,
+      status:
+        data.status || "ACTIVE",
 
     },
 
@@ -98,15 +179,20 @@ export async function updateBusinessModel(
 
 
 export async function deactivateBusinessModel(
-  id: string,
+  modelId: string,
   userId: string
 ) {
 
-  return prisma.businessModel.updateMany({
+  await requireModelEditAccess(
+    modelId,
+    userId
+  );
+
+
+  return prisma.businessModel.update({
 
     where: {
-      id,
-      createdBy: userId,
+      id: modelId,
     },
 
     data: {

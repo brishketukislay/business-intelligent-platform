@@ -7,60 +7,8 @@ import {
 } from "@/lib/prisma";
 
 import {
-  scryptSync,
-  timingSafeEqual,
-} from "crypto";
-
-
-function verifyPassword(
-  password: string,
-  storedHash: string
-): boolean {
-
-  const parts =
-    storedHash.split(":");
-
-
-  if (parts.length !== 2) {
-    return false;
-  }
-
-
-  const [
-    salt,
-    key,
-  ] = parts;
-
-
-  const derivedKey =
-    scryptSync(
-      password,
-      salt,
-      64
-    );
-
-
-  const storedKey =
-    Buffer.from(
-      key,
-      "hex"
-    );
-
-
-  if (
-    storedKey.length !==
-    derivedKey.length
-  ) {
-    return false;
-  }
-
-
-  return timingSafeEqual(
-    storedKey,
-    derivedKey
-  );
-
-}
+  verifyPassword,
+} from "@/lib/password";
 
 
 export const {
@@ -132,8 +80,7 @@ export const {
 
 
           /*
-           * Users must be explicitly approved
-           * before they can log in.
+           * Only active users can log in.
            */
 
           if (
@@ -156,8 +103,18 @@ export const {
           }
 
 
+          /*
+           * Passwords are stored and verified
+           * using the shared implementation in
+           * src/lib/password.ts.
+           *
+           * Format:
+           *
+           * scrypt$salt$derivedKey
+           */
+
           const validPassword =
-            verifyPassword(
+            await verifyPassword(
               password,
               user.passwordHash
             );
@@ -203,13 +160,73 @@ export const {
         user,
       }) {
 
+        /*
+         * On initial sign-in, store the user ID.
+         */
+
         if (user) {
 
           token.id =
             user.id;
 
-          token.role =
-            user.role;
+        }
+
+
+        /*
+         * Always refresh role and status from
+         * the database.
+         *
+         * This means role/status changes made
+         * by an admin take effect for existing
+         * sessions.
+         */
+
+        const userId =
+          typeof token.id === "string"
+            ? token.id
+            : "";
+
+
+        if (userId) {
+
+          const currentUser =
+            await prisma.user.findUnique({
+
+              where: {
+                id: userId,
+              },
+
+              select: {
+
+                role: true,
+
+                status: true,
+
+              },
+
+            });
+
+
+          if (!currentUser) {
+
+            token.id =
+              "";
+
+            token.role =
+              "USER";
+
+            token.status =
+              "DISABLED";
+
+          } else {
+
+            token.role =
+              currentUser.role;
+
+            token.status =
+              currentUser.status;
+
+          }
 
         }
 

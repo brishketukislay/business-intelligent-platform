@@ -2,6 +2,11 @@ import {
   prisma,
 } from "@/lib/prisma";
 
+import {
+  requireModelAccess,
+  requireModelEditAccess,
+} from "@/lib/model-access";
+
 import type {
   InputDefinitionInput,
 } from "../schemas/input-schema";
@@ -12,18 +17,29 @@ export async function getInputDefinitions(
   userId: string
 ) {
 
+  /*
+   * User may be the owner or have explicit access.
+   */
+  await requireModelAccess(
+    modelId,
+    userId
+  );
+
+
   return prisma.inputDefinition.findMany({
 
     where: {
+
       modelId,
 
-      model: {
-        createdBy: userId,
-      },
+      status: "ACTIVE",
+
     },
 
     orderBy: {
-      createdAt: "desc",
+
+      createdAt: "asc",
+
     },
 
   });
@@ -36,41 +52,31 @@ export async function createInputDefinition(
   userId: string
 ) {
 
-  const model =
-    await prisma.businessModel.findFirst({
-
-      where: {
-        id: data.modelId,
-        createdBy: userId,
-      },
-
-      select: {
-        id: true,
-      },
-
-    });
-
-
-  if (!model) {
-
-    throw new Error(
-      "Business model not found or access denied."
-    );
-
-  }
+  /*
+   * Creating an input changes the model structure,
+   * so VIEW users cannot do this.
+   */
+  await requireModelEditAccess(
+    data.modelId,
+    userId
+  );
 
 
   return prisma.inputDefinition.create({
 
     data: {
 
-      modelId: model.id,
+      modelId:
+        data.modelId,
 
-      name: data.name,
+      name:
+        data.name,
 
-      key: data.key,
+      key:
+        data.key,
 
-      type: data.type,
+      type:
+        data.type,
 
       unit:
         data.unit ??
@@ -94,19 +100,18 @@ export async function updateInputDefinition(
 ) {
 
   const input =
-    await prisma.inputDefinition.findFirst({
+    await prisma.inputDefinition.findUnique({
 
       where: {
         id,
-
-        model: {
-          createdBy: userId,
-        },
       },
 
       select: {
+
         id: true,
+
         modelId: true,
+
       },
 
     });
@@ -121,19 +126,46 @@ export async function updateInputDefinition(
   }
 
 
+  /*
+   * Make sure the input belongs to the model
+   * supplied by the form.
+   */
+  if (
+    input.modelId !== data.modelId
+  ) {
+
+    throw new Error(
+      "Input does not belong to this business model."
+    );
+
+  }
+
+
+  await requireModelEditAccess(
+    input.modelId,
+    userId
+  );
+
+
   return prisma.inputDefinition.update({
 
     where: {
-      id: input.id,
+
+      id:
+        input.id,
+
     },
 
     data: {
 
-      name: data.name,
+      name:
+        data.name,
 
-      key: data.key,
+      key:
+        data.key,
 
-      type: data.type,
+      type:
+        data.type,
 
       unit:
         data.unit ??
@@ -156,19 +188,18 @@ export async function deactivateInputDefinition(
 ) {
 
   const input =
-    await prisma.inputDefinition.findFirst({
+    await prisma.inputDefinition.findUnique({
 
       where: {
         id,
-
-        model: {
-          createdBy: userId,
-        },
       },
 
       select: {
+
         id: true,
+
         modelId: true,
+
       },
 
     });
@@ -183,33 +214,28 @@ export async function deactivateInputDefinition(
   }
 
 
+  await requireModelEditAccess(
+    input.modelId,
+    userId
+  );
+
+
   return prisma.inputDefinition.update({
 
     where: {
-      id: input.id,
+
+      id:
+        input.id,
+
     },
 
     data: {
-      status: "INACTIVE",
+
+      status:
+        "INACTIVE",
+
     },
 
   });
 
 }
-
-
-// export async function getDefaultBusinessModel() {
-
-//   return prisma.businessModel.findFirst({
-
-//     where: {
-//       status: "ACTIVE",
-//     },
-
-//     orderBy: {
-//       createdAt: "asc",
-//     },
-
-//   });
-
-// }

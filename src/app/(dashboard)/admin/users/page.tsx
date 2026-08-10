@@ -14,6 +14,8 @@ import {
   approveUser,
   disableUser,
   enableUser,
+  makeAdmin,
+  makeUser,
 } from "./actions";
 
 
@@ -84,7 +86,7 @@ export default async function AdminUsersPage() {
 
       <div className="overflow-x-auto rounded-lg border bg-background">
 
-        <table className="w-full min-w-[700px] text-sm">
+        <table className="w-full min-w-[800px] text-sm">
 
           <thead className="border-b bg-muted/30">
 
@@ -146,71 +148,121 @@ export default async function AdminUsersPage() {
 
                 <td className="px-4 py-3 text-right">
 
-                  {user.status === "PENDING" && (
+                  <div className="flex flex-wrap justify-end gap-2">
 
-                    <form action={approveUser}>
+                    {user.status === "PENDING" && (
 
-                      <input
-                        type="hidden"
-                        name="userId"
-                        value={user.id}
-                      />
+                      <form action={approveUser}>
 
-                      <button
-                        type="submit"
-                        className="rounded-md bg-primary px-3 py-2 text-xs font-medium text-primary-foreground hover:bg-primary/90"
-                      >
-                        Approve
-                      </button>
+                        <input
+                          type="hidden"
+                          name="userId"
+                          value={user.id}
+                        />
 
-                    </form>
+                        <button
+                          type="submit"
+                          className="rounded-md bg-primary px-3 py-2 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+                        >
+                          Approve
+                        </button>
 
-                  )}
+                      </form>
 
-
-                  {user.status === "ACTIVE" &&
-                    user.id !== session.user.id && (
-
-                    <form action={disableUser}>
-
-                      <input
-                        type="hidden"
-                        name="userId"
-                        value={user.id}
-                      />
-
-                      <button
-                        type="submit"
-                        className="rounded-md border px-3 py-2 text-xs font-medium hover:bg-muted"
-                      >
-                        Disable
-                      </button>
-
-                    </form>
-
-                  )}
+                    )}
 
 
-                  {user.status === "DISABLED" && (
+                    {user.status === "ACTIVE" &&
+                      user.id !== session.user.id && (
 
-                    <form action={enableUser}>
+                      <form action={disableUser}>
 
-                      <input
-                        type="hidden"
-                        name="userId"
-                        value={user.id}
-                      />
+                        <input
+                          type="hidden"
+                          name="userId"
+                          value={user.id}
+                        />
 
-                      <button
-                        type="submit"
-                        className="rounded-md bg-primary px-3 py-2 text-xs font-medium text-primary-foreground hover:bg-primary/90"
-                      >
-                        Enable
-                      </button>
+                        <button
+                          type="submit"
+                          className="rounded-md border border-input px-3 py-2 text-xs font-medium hover:bg-muted"
+                        >
+                          Disable
+                        </button>
 
-                    </form>
+                      </form>
 
-                  )}
+                    )}
+
+
+                    {user.status === "DISABLED" && (
+
+                      <form action={enableUser}>
+
+                        <input
+                          type="hidden"
+                          name="userId"
+                          value={user.id}
+                        />
+
+                        <button
+                          type="submit"
+                          className="rounded-md border border-input px-3 py-2 text-xs font-medium text-green-700 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-950/30"
+                        >
+                          Enable
+                        </button>
+
+                      </form>
+
+                    )}
+
+
+                    {user.id !== session.user.id &&
+                      user.role === "USER" && (
+
+                      <form action={makeAdmin}>
+
+                        <input
+                          type="hidden"
+                          name="userId"
+                          value={user.id}
+                        />
+
+                        <button
+                          type="submit"
+                          className="rounded-md border border-input px-3 py-2 text-xs font-medium hover:bg-muted"
+                        >
+                          Make Admin
+                        </button>
+
+                      </form>
+
+                    )}
+
+
+                    {user.id !== session.user.id &&
+                      user.role === "ADMIN" && (
+
+                      <form action={makeUser}>
+
+                        <input
+                          type="hidden"
+                          name="userId"
+                          value={user.id}
+                        />
+
+                        <button
+                          type="submit"
+                          className="rounded-md border border-input px-3 py-2 text-xs font-medium hover:bg-muted"
+                        >
+                          Make User
+                        </button>
+
+                      </form>
+
+                    )}
+
+                  </div>
 
                 </td>
 

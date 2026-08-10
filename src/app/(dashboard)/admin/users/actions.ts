@@ -156,3 +156,105 @@ export async function enableUser(
   redirect("/admin/users");
 
 }
+export async function makeAdmin(
+  formData: FormData
+) {
+
+  const session =
+    await requireAdmin();
+
+
+  const userId =
+    String(
+      formData.get("userId") ?? ""
+    ).trim();
+
+
+  if (!userId) {
+
+    throw new Error(
+      "User ID is required."
+    );
+
+  }
+
+
+  if (
+    userId === session.id
+  ) {
+
+    throw new Error(
+      "You cannot change your own role."
+    );
+
+  }
+
+
+  await prisma.user.update({
+
+    where: {
+      id: userId,
+    },
+
+    data: {
+      role: "ADMIN",
+    },
+
+  });
+
+
+  redirect("/admin/users");
+
+}
+
+
+export async function makeUser(
+  formData: FormData
+) {
+
+  const session =
+    await requireAdmin();
+
+
+  const userId =
+    String(
+      formData.get("userId") ?? ""
+    ).trim();
+
+
+  if (!userId) {
+
+    throw new Error(
+      "User ID is required."
+    );
+
+  }
+
+
+  if (
+    userId === session.id
+  ) {
+
+    throw new Error(
+      "You cannot change your own role."
+    );
+
+  }
+
+
+  await prisma.user.update({
+
+    where: {
+      id: userId,
+    },
+
+    data: {
+      role: "USER",
+    },
+
+  });
+
+
+  redirect("/admin/users");
+
+}

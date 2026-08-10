@@ -17,6 +17,10 @@ import {
 } from "@/features/scenarios/services/scenario-service";
 
 import {
+  getModelAccess,
+} from "@/lib/model-access";
+
+import {
   prisma,
 } from "@/lib/prisma";
 
@@ -31,7 +35,6 @@ import {
 import {
   ScenarioEditForm,
 } from "@/features/scenarios/components/scenario-edit-form";
-
 
 import {
   calculateScenarioMetrics,
@@ -69,6 +72,18 @@ export default async function ScenarioDetailPage({
     await requireCurrentUser();
 
 
+  const access =
+    await getModelAccess(
+      modelId,
+      user.id
+    );
+
+
+  if (!access) {
+    notFound();
+  }
+
+
   const model =
     await getBusinessModelById(
       modelId,
@@ -77,11 +92,6 @@ export default async function ScenarioDetailPage({
 
 
   if (!model) {
-    notFound();
-  }
-
-
-  if (model.createdBy !== user.id) {
     notFound();
   }
 
@@ -109,14 +119,6 @@ export default async function ScenarioDetailPage({
       user.id
     );
 
-
-  /*
-   * Get all active inputs for the model.
-   *
-   * A scenario may not have a ScenarioValue row yet for
-   * every input, so merge the model inputs with the
-   * scenario's existing values.
-   */
 
   const inputs =
     await prisma.inputDefinition.findMany({
@@ -174,6 +176,10 @@ export default async function ScenarioDetailPage({
 
       })
     );
+
+
+  const canEdit =
+    access.permission === "EDIT";
 
 
   return (
@@ -240,15 +246,34 @@ export default async function ScenarioDetailPage({
 
 
             <p className="mt-1 text-sm text-muted-foreground">
+
               {scenario.description ??
                 "No description provided."}
+
             </p>
 
 
             <p className="mt-2 text-xs text-muted-foreground">
+
               Created{" "}
               {scenario.createdAt.toLocaleString()}
+
             </p>
+
+
+            {!access.isOwner && (
+
+              <p className="mt-2 text-xs text-muted-foreground">
+
+                {access.isAdmin
+                  ? "Administrator access"
+                  : canEdit
+                    ? "Shared with edit access"
+                    : "Shared with view access"}
+
+              </p>
+
+            )}
 
           </div>
 
@@ -267,7 +292,11 @@ export default async function ScenarioDetailPage({
 
 
           <p className="mt-1 text-sm text-muted-foreground">
-            Configure the input values used by this scenario.
+
+            {canEdit
+              ? "Configure the input values used by this scenario."
+              : "View the input values used by this scenario."}
+
           </p>
 
         </div>
@@ -279,6 +308,7 @@ export default async function ScenarioDetailPage({
             scenarioId={scenario.id}
             modelId={model.id}
             inputs={scenarioInputs}
+            readOnly={!canEdit}
           />
 
         </div>
@@ -293,6 +323,7 @@ export default async function ScenarioDetailPage({
           <h2 className="font-semibold">
             Calculated Metrics
           </h2>
+
 
           <p className="mt-1 text-sm text-muted-foreground">
             Metrics calculated using the values stored in this scenario.
@@ -312,15 +343,19 @@ export default async function ScenarioDetailPage({
       </div>
 
 
-      <ScenarioEditForm
-        modelId={model.id}
-        scenarioId={scenario.id}
-        initialName={scenario.name}
-        initialDescription={
-          scenario.description ?? ""
-        }
-        status={scenario.status}
-      />
+      {canEdit && (
+
+        <ScenarioEditForm
+          modelId={model.id}
+          scenarioId={scenario.id}
+          initialName={scenario.name}
+          initialDescription={
+            scenario.description ?? ""
+          }
+          status={scenario.status}
+        />
+
+      )}
 
 
       <div className="flex flex-wrap gap-3">

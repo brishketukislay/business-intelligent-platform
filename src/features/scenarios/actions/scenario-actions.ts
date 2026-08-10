@@ -12,6 +12,7 @@ import {
   createScenario,
   updateScenario,
   deactivateScenario,
+  upsertScenarioValue,
 } from "../services/scenario-service";
 
 
@@ -48,19 +49,13 @@ export async function createScenarioAction(
 
   try {
 
-    // await createScenario(
-    //   modelId,
-    //   user.id,
-    //   cleanName,
-    //   cleanDescription
-    // );
-const scenario =
-  await createScenario(
-    modelId,
-    user.id,
-    cleanName,
-    cleanDescription
-  );
+    const scenario =
+      await createScenario(
+        modelId,
+        user.id,
+        cleanName,
+        cleanDescription
+      );
 
 
     revalidatePath(
@@ -72,14 +67,14 @@ const scenario =
     );
 
 
-return {
+    return {
 
-  success: true,
+      success: true,
 
-  scenarioId:
-    scenario.id,
+      scenarioId:
+        scenario.id,
 
-};
+    };
 
 
   } catch (error) {
@@ -235,6 +230,70 @@ export async function deactivateScenarioAction(
         error instanceof Error
           ? error.message
           : "Unable to deactivate scenario.",
+
+    };
+
+  }
+
+}
+
+
+/**
+ * Save a scenario input value.
+ *
+ * This is called after the user finishes editing,
+ * rather than on every keystroke.
+ */
+export async function saveScenarioValue(
+  input: {
+    modelId: string;
+    scenarioId: string;
+    inputId: string;
+    value: string;
+  }
+) {
+
+  const user =
+    await requireCurrentUser();
+
+
+  try {
+
+    await upsertScenarioValue(
+      input.scenarioId,
+      input.inputId,
+      input.value,
+      user.id
+    );
+
+
+    revalidatePath(
+      `/models/${input.modelId}/scenarios/${input.scenarioId}`
+    );
+
+
+    return {
+
+      success: true,
+
+    };
+
+  } catch (error) {
+
+    console.error(
+      "Failed to save scenario value:",
+      error
+    );
+
+
+    return {
+
+      success: false,
+
+      error:
+        error instanceof Error
+          ? error.message
+          : "Unable to save scenario value.",
 
     };
 

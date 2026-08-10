@@ -7,28 +7,8 @@ import {
 } from "@/lib/prisma";
 
 import {
-  randomBytes,
-  scryptSync,
-} from "crypto";
-
-
-function hashPassword(
-  password: string
-): string {
-
-  const salt =
-    randomBytes(16).toString("hex");
-
-  const hash =
-    scryptSync(
-      password,
-      salt,
-      64
-    ).toString("hex");
-
-  return `${salt}:${hash}`;
-
-}
+  hashPassword,
+} from "@/lib/password";
 
 
 export async function POST(
@@ -70,14 +50,19 @@ export async function POST(
     }
 
 
+    /*
+     * Keep password requirements consistent
+     * with the password reset flow.
+     */
+
     if (
-      password.length < 8
+      password.length < 12
     ) {
 
       return NextResponse.json(
         {
           error:
-            "Password must be at least 8 characters.",
+            "Password must be at least 12 characters.",
         },
         {
           status: 400,
@@ -89,9 +74,11 @@ export async function POST(
 
     const existingUser =
       await prisma.user.findUnique({
+
         where: {
           email,
         },
+
       });
 
 
@@ -146,6 +133,21 @@ export async function POST(
     }
 
 
+    /*
+     * Use the same password hashing implementation
+     * used by registration and password reset.
+     *
+     * Stored format:
+     *
+     * scrypt$salt$derivedKey
+     */
+
+    const passwordHash =
+      await hashPassword(
+        password
+      );
+
+
     await prisma.user.create({
 
       data: {
@@ -155,10 +157,7 @@ export async function POST(
         name:
           email.split("@")[0],
 
-        passwordHash:
-          hashPassword(
-            password
-          ),
+        passwordHash,
 
         role:
           "USER",
