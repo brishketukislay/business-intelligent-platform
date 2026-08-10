@@ -22,6 +22,7 @@ model User {
   savedModels    SavedModel[]
   scenarios      Scenario[]
   modelAccess    BusinessModelAccess[]
+  analyticsCharts AnalyticsChart[]
 }
 
 model PasswordResetToken {
@@ -56,6 +57,7 @@ model BusinessModel {
   savedModels SavedModel[]
   scenarios   Scenario[]
   access      BusinessModelAccess[]
+  analyticsCharts AnalyticsChart[]
 }
 
 model BusinessModelSettings {
@@ -239,4 +241,19 @@ model BusinessModelAccess {
   @@unique([modelId, userId])
   @@index([modelId])
   @@index([userId])
+}
+model AnalyticsChart {
+  id        String   @id @default(cuid())
+  modelId   String
+  createdBy String
+  name      String
+  config    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  model   BusinessModel @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  creator User          @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+
+  @@index([modelId, createdAt])
+  @@index([createdBy, createdAt])
 }

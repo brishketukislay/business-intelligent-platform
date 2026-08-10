@@ -42,6 +42,7 @@ export async function getModelAccess(
 
       select: {
         id: true,
+        name: true,
         createdBy: true,
         status: true,
       },
