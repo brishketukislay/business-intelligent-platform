@@ -7,21 +7,22 @@ import {
 import Link from "next/link";
 
 import {
-  signIn,
-} from "next-auth/react";
-
-import {
   Eye,
   EyeOff,
 } from "lucide-react";
 
 
-export default function LoginPage() {
+export default function RequestAccessPage() {
 
   const [
     showPassword,
     setShowPassword,
   ] = useState(false);
+
+  const [
+    message,
+    setMessage,
+  ] = useState("");
 
   const [
     error,
@@ -36,41 +37,35 @@ export default function LoginPage() {
     event.preventDefault();
 
     setError("");
+    setMessage("");
 
+
+    const form =
+      event.currentTarget;
 
     const formData =
-      new FormData(event.currentTarget);
+      new FormData(form);
 
 
-    const email =
-      String(
-        formData.get("email") || ""
-      );
-
-    const password =
-      String(
-        formData.get("password") || ""
-      );
-
-
-    const result =
-      await signIn(
-        "credentials",
+    const response =
+      await fetch(
+        "/api/auth/request-access",
         {
-          email,
-          password,
-          redirect: false,
+          method: "POST",
+          body: formData,
         }
       );
 
 
-    if (
-      !result ||
-      result.error
-    ) {
+    const data =
+      await response.json();
+
+
+    if (!response.ok) {
 
       setError(
-        "Invalid email or password, or your account has not been approved yet."
+        data.error ||
+        "Unable to submit request."
       );
 
       return;
@@ -78,8 +73,11 @@ export default function LoginPage() {
     }
 
 
-    window.location.href =
-      "/models";
+    setMessage(
+      "Your access request has been submitted. An administrator must approve your account before you can sign in."
+    );
+
+    form.reset();
 
   }
 
@@ -112,11 +110,12 @@ export default function LoginPage() {
         <div className="mb-8 space-y-2">
 
           <h1 className="text-2xl font-semibold">
-            Sign in
+            Request access
           </h1>
 
           <p className="text-sm text-muted-foreground">
-            Sign in to your BI Finance Modelling Platform account.
+            Create your account request. An administrator will
+            review and approve it before you can sign in.
           </p>
 
         </div>
@@ -185,8 +184,9 @@ export default function LoginPage() {
                     : "password"
                 }
                 required
-                autoComplete="current-password"
-                placeholder="Enter your password"
+                minLength={8}
+                autoComplete="new-password"
+                placeholder="Create a password"
                 className="
                   flex
                   h-10
@@ -243,21 +243,9 @@ export default function LoginPage() {
             </div>
 
 
-            <div className="text-right">
-
-              <Link
-                href="/forgot-password"
-                className="
-                  text-sm
-                  text-muted-foreground
-                  hover:text-foreground
-                  hover:underline
-                "
-              >
-                Forgot password?
-              </Link>
-
-            </div>
+            <p className="text-xs text-muted-foreground">
+              Use at least 8 characters.
+            </p>
 
           </div>
 
@@ -282,6 +270,26 @@ export default function LoginPage() {
           )}
 
 
+          {message && (
+
+            <div
+              className="
+                rounded-md
+                border
+                border-green-500/30
+                bg-green-500/10
+                px-3
+                py-2
+                text-sm
+                text-green-700
+              "
+            >
+              {message}
+            </div>
+
+          )}
+
+
           <button
             type="submit"
             className="
@@ -300,7 +308,7 @@ export default function LoginPage() {
               hover:bg-primary/90
             "
           >
-            Sign in
+            Request access
           </button>
 
         </form>
@@ -308,22 +316,16 @@ export default function LoginPage() {
 
         <div className="mt-6 text-center">
 
-          <p className="text-sm text-muted-foreground">
-            Don't have an account?
-          </p>
-
           <Link
-            href="/request-access"
+            href="/login"
             className="
-              mt-1
-              inline-block
               text-sm
-              font-medium
-              text-primary
+              text-muted-foreground
+              hover:text-foreground
               hover:underline
             "
           >
-            Request access
+            Back to sign in
           </Link>
 
         </div>
