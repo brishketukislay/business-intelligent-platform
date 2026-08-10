@@ -195,6 +195,28 @@ function tokenize(
   return tokens;
 
 }
+export function getFormulaIdentifiers(
+  formula: string
+): string[] {
+
+  const tokens =
+    tokenize(formula);
+
+  return Array.from(
+    new Set(
+      tokens
+        .filter(
+          (token) =>
+            token.type === "identifier"
+        )
+        .map(
+          (token) =>
+            token.value
+        )
+    )
+  );
+
+}
 
 
 class Parser {
@@ -414,7 +436,7 @@ class Parser {
       ) {
 
         throw new Error(
-          `Unknown input "${token.value}".`
+          `Unknown variable "${token.value}".`
         );
 
       }
@@ -423,7 +445,7 @@ class Parser {
       if (!Number.isFinite(value)) {
 
         throw new Error(
-          `Input "${token.value}" is not a valid number.`
+          `Variable "${token.value}" is not a valid number.`
         );
 
       }

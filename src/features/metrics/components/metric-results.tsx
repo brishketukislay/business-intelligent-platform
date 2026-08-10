@@ -15,28 +15,35 @@ function formatValue(
     return "—";
   }
 
-
   if (metric.type === "Percentage") {
-
     return `${metric.value}%`;
-
   }
 
-
   if (metric.type === "Currency") {
+
+    const currencyMap: Record<string, string> = {
+      GBP: "GBP",
+      "£": "GBP",
+      "Â£": "GBP",
+      USD: "USD",
+      "$": "USD",
+      EUR: "EUR",
+      "€": "EUR",
+    };
+
+    const currency =
+      currencyMap[metric.unit ?? ""] ?? "GBP";
 
     return new Intl.NumberFormat(
       "en-GB",
       {
         style: "currency",
-        currency:
-          metric.unit || "GBP",
+        currency,
         maximumFractionDigits: 2,
       }
     ).format(metric.value);
 
   }
-
 
   return new Intl.NumberFormat(
     "en-GB",
@@ -46,6 +53,7 @@ function formatValue(
   ).format(metric.value);
 
 }
+
 
 
 export function MetricResults({
