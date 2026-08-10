@@ -2,6 +2,8 @@
 
 import {
   ReactNode,
+  cloneElement,
+  isValidElement,
 } from "react";
 
 import {
@@ -10,7 +12,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 
 
@@ -28,7 +29,7 @@ type ModelActionDialogProps = {
 
 
 export function ModelActionDialog({
-  open,
+  open = false,
   onOpenChange,
   trigger,
   title,
@@ -36,84 +37,108 @@ export function ModelActionDialog({
   children,
 }: ModelActionDialogProps) {
 
+  function handleTriggerClick() {
+
+    onOpenChange?.(true);
+
+  }
+
+
+  const triggerElement =
+    isValidElement(trigger)
+      ? cloneElement(
+          trigger as React.ReactElement<{
+            onClick?: (
+              event: React.MouseEvent
+            ) => void;
+          }>,
+          {
+            onClick: handleTriggerClick,
+          }
+        )
+      : trigger;
+
+
   return (
 
-    <Dialog
-      open={open}
-      onOpenChange={onOpenChange}
-    >
+    <>
 
-      <DialogTrigger asChild>
-        {trigger}
-      </DialogTrigger>
+      {triggerElement}
 
 
-      <DialogContent
-        className="
-          w-[calc(100%-2rem)]
-          max-w-lg
-          border
-          border-slate-200
-          bg-white
-          p-0
-          text-slate-950
-          shadow-2xl
-          sm:rounded-xl
-          [&>button]:text-slate-500
-          [&>button]:hover:text-slate-950
-        "
+      <Dialog
+        open={open}
+        onOpenChange={onOpenChange}
       >
 
-        <DialogHeader
+        <DialogContent
           className="
-            border-b
+            w-[calc(100%-2rem)]
+            max-w-lg
+            border
             border-slate-200
             bg-white
-            px-6
-            py-5
+            p-0
+            text-slate-950
+            shadow-2xl
+            sm:rounded-xl
+            [&>button]:text-slate-500
+            [&>button]:hover:text-slate-950
           "
         >
 
-          <DialogTitle
+          <DialogHeader
             className="
-              text-lg
-              font-semibold
-              text-slate-950
+              border-b
+              border-slate-200
+              bg-white
+              px-6
+              py-5
             "
           >
-            {title}
-          </DialogTitle>
+
+            <DialogTitle
+              className="
+                text-lg
+                font-semibold
+                text-slate-950
+              "
+            >
+              {title}
+            </DialogTitle>
 
 
-          <DialogDescription
+            <DialogDescription
+              className="
+                mt-1
+                text-sm
+                leading-5
+                text-slate-600
+              "
+            >
+              {description}
+            </DialogDescription>
+
+          </DialogHeader>
+
+
+          <div
             className="
-              mt-1
-              text-sm
-              leading-5
-              text-slate-600
+              max-h-[75vh]
+              overflow-y-auto
+              bg-white
+              px-6
+              py-6
             "
           >
-            {description}
-          </DialogDescription>
+            {children}
+          </div>
 
-        </DialogHeader>
+        </DialogContent>
 
+      </Dialog>
 
-        <div
-          className="
-            max-h-[75vh]
-            overflow-y-auto
-            bg-white
-            px-6
-            py-6
-          "
-        >
-          {children}
-        </div>
-
-      </DialogContent>
-
-    </Dialog>
+    </>
 
   );
 
