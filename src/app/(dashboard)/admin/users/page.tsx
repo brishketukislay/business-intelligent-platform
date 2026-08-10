@@ -13,6 +13,7 @@ import {
 import {
   approveUser,
   disableUser,
+  enableUser,
 } from "./actions";
 
 
@@ -184,6 +185,27 @@ export default async function AdminUsersPage() {
                     </form>
 
                   )}
+                  {user.status === "DISABLED" && (
+
+  <form action={enableUser}>
+
+    <input
+      type="hidden"
+      name="userId"
+      value={user.id}
+    />
+
+    <button
+      type="submit"
+      className="rounded-md bg-primary px-3 py-2 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+    >
+      Enable
+    </button>
+
+  </form>
+
+)}
+
 
                 </td>
 

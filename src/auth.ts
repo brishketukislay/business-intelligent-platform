@@ -138,7 +138,7 @@ export const {
 
           if (
             user.status !==
-            "APPROVED"
+            "ACTIVE"
           ) {
             return null;
           }

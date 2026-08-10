@@ -19,9 +19,7 @@ async function requireAdmin() {
     await auth();
 
 
-  if (
-    !session?.user?.id
-  ) {
+  if (!session?.user?.id) {
     redirect("/login");
   }
 
@@ -64,7 +62,7 @@ export async function approveUser(
     },
 
     data: {
-      status: "APPROVED",
+      status: "ACTIVE",
     },
 
   });
@@ -75,7 +73,47 @@ export async function approveUser(
 }
 
 
-export async function rejectUser(
+export async function disableUser(
+  formData: FormData
+) {
+
+  const admin =
+    await requireAdmin();
+
+
+  const userId =
+    String(
+      formData.get("userId") || ""
+    );
+
+
+  if (
+    !userId ||
+    userId === admin.id
+  ) {
+    return;
+  }
+
+
+  await prisma.user.update({
+
+    where: {
+      id: userId,
+    },
+
+    data: {
+      status: "DISABLED",
+    },
+
+  });
+
+
+  redirect("/admin/users");
+
+}
+
+
+export async function enableUser(
   formData: FormData
 ) {
 
@@ -100,7 +138,7 @@ export async function rejectUser(
     },
 
     data: {
-      status: "REJECTED",
+      status: "ACTIVE",
     },
 
   });
