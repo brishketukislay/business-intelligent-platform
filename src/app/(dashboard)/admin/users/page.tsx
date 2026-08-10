@@ -128,17 +128,21 @@ export default async function AdminUsersPage() {
                   {user.name ?? "—"}
                 </td>
 
+
                 <td className="px-4 py-3">
                   {user.email}
                 </td>
+
 
                 <td className="px-4 py-3">
                   {user.role}
                 </td>
 
+
                 <td className="px-4 py-3">
                   {user.status}
                 </td>
+
 
                 <td className="px-4 py-3 text-right">
 
@@ -185,27 +189,28 @@ export default async function AdminUsersPage() {
                     </form>
 
                   )}
+
+
                   {user.status === "DISABLED" && (
 
-  <form action={enableUser}>
+                    <form action={enableUser}>
 
-    <input
-      type="hidden"
-      name="userId"
-      value={user.id}
-    />
+                      <input
+                        type="hidden"
+                        name="userId"
+                        value={user.id}
+                      />
 
-    <button
-      type="submit"
-      className="rounded-md bg-primary px-3 py-2 text-xs font-medium text-primary-foreground hover:bg-primary/90"
-    >
-      Enable
-    </button>
+                      <button
+                        type="submit"
+                        className="rounded-md bg-primary px-3 py-2 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+                      >
+                        Enable
+                      </button>
 
-  </form>
+                    </form>
 
-)}
-
+                  )}
 
                 </td>
 

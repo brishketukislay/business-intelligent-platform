@@ -1,16 +1,16 @@
 "use server";
 
 import {
+  redirect,
+} from "next/navigation";
+
+import {
   auth,
 } from "@/auth";
 
 import {
   prisma,
 } from "@/lib/prisma";
-
-import {
-  revalidatePath,
-} from "next/cache";
 
 
 async function requireAdmin() {
@@ -20,26 +20,18 @@ async function requireAdmin() {
 
 
   if (!session?.user?.id) {
-
-    throw new Error(
-      "Unauthorized."
-    );
-
+    redirect("/login");
   }
 
 
   if (
     session.user.role !== "ADMIN"
   ) {
-
-    throw new Error(
-      "Forbidden."
-    );
-
+    redirect("/dashboard");
   }
 
 
-  return session;
+  return session.user;
 
 }
 
@@ -54,15 +46,13 @@ export async function approveUser(
   const userId =
     String(
       formData.get("userId") ?? ""
-    );
+    ).trim();
 
 
   if (!userId) {
-
     throw new Error(
       "User ID is required."
     );
-
   }
 
 
@@ -79,9 +69,7 @@ export async function approveUser(
   });
 
 
-  revalidatePath(
-    "/admin/users"
-  );
+  redirect("/admin/users");
 
 }
 
@@ -97,18 +85,20 @@ export async function disableUser(
   const userId =
     String(
       formData.get("userId") ?? ""
-    );
+    ).trim();
 
 
-  if (
-    !userId ||
-    userId === session.user.id
-  ) {
-
+  if (!userId) {
     throw new Error(
-      "Invalid user."
+      "User ID is required."
     );
+  }
 
+
+  if (userId === session.id) {
+    throw new Error(
+      "You cannot disable your own account."
+    );
   }
 
 
@@ -125,8 +115,44 @@ export async function disableUser(
   });
 
 
-  revalidatePath(
-    "/admin/users"
-  );
+  redirect("/admin/users");
+
+}
+
+
+export async function enableUser(
+  formData: FormData
+) {
+
+  await requireAdmin();
+
+
+  const userId =
+    String(
+      formData.get("userId") ?? ""
+    ).trim();
+
+
+  if (!userId) {
+    throw new Error(
+      "User ID is required."
+    );
+  }
+
+
+  await prisma.user.update({
+
+    where: {
+      id: userId,
+    },
+
+    data: {
+      status: "ACTIVE",
+    },
+
+  });
+
+
+  redirect("/admin/users");
 
 }
