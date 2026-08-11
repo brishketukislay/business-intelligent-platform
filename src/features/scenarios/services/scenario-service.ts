@@ -7,6 +7,10 @@ import {
   requireModelEditAccess,
 } from "@/lib/model-access";
 
+import {
+  duplicateScenarioRecord,
+} from "./scenario-duplicate-service";
+
 
 export async function getScenarios(
   modelId: string,
@@ -241,6 +245,36 @@ export async function createScenario(
 
   return scenario;
 
+}
+export async function duplicateScenario(
+  scenarioId: string,
+  userId: string
+) {
+  const source =
+    await prisma.scenario.findUnique({
+      where: {
+        id: scenarioId,
+      },
+      select: {
+        modelId: true,
+      },
+    });
+
+  if (!source) {
+    throw new Error(
+      "Scenario not found."
+    );
+  }
+
+  await requireModelEditAccess(
+    source.modelId,
+    userId
+  );
+
+  return duplicateScenarioRecord({
+    scenarioId,
+    userId,
+  });
 }
 
 

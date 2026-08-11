@@ -10,6 +10,7 @@ import {
 
 import {
   createScenario,
+  duplicateScenario,
   updateScenario,
   deactivateScenario,
   upsertScenarioValue,
@@ -98,6 +99,59 @@ export async function createScenarioAction(
 
   }
 
+}
+export async function duplicateScenarioAction(
+  modelId: string,
+  scenarioId: string
+) {
+  const user =
+    await requireCurrentUser();
+
+  if (
+    !modelId.trim() ||
+    !scenarioId.trim()
+  ) {
+    return {
+      success: false,
+      error:
+        "Scenario could not be copied.",
+    };
+  }
+
+  try {
+    const scenario =
+      await duplicateScenario(
+        scenarioId,
+        user.id
+      );
+
+    revalidatePath(
+      `/models/${modelId}/scenarios`
+    );
+
+    revalidatePath(
+      `/models/${modelId}/scenarios/${scenario.id}`
+    );
+
+    return {
+      success: true,
+      scenarioId:
+        scenario.id,
+    };
+  } catch (error) {
+    console.error(
+      "Failed to duplicate scenario:",
+      error
+    );
+
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Unable to copy scenario.",
+    };
+  }
 }
 
 

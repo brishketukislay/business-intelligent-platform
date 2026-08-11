@@ -44,6 +44,10 @@ import {
   MetricResults,
 } from "@/features/metrics/components/metric-results";
 
+import {
+  ScenarioCopyButton,
+} from "@/features/scenarios/components/scenario-copy-button";
+
 
 type ScenarioDetailPageProps = {
   params: Promise<{
@@ -276,7 +280,12 @@ export default async function ScenarioDetailPage({
             )}
 
           </div>
-
+          {canEdit && (
+  <ScenarioCopyButton
+    modelId={model.id}
+    scenarioId={scenario.id}
+  />
+)}
         </div>
 
       </div>
