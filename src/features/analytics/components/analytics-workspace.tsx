@@ -1,29 +1,27 @@
 "use client";
 
 import {
+  useEffect,
   useMemo,
+  useRef,
   useState,
+  type PointerEvent,
 } from "react";
 
-import {
-  useRouter,
-} from "next/navigation";
+import { useRouter } from "next/navigation";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 import {
-  Button,
-} from "@/components/ui/button";
-
-import {
-  Input,
-} from "@/components/ui/input";
-
-import {
-  Label,
-} from "@/components/ui/label";
-
-import {
-  Badge,
-} from "@/components/ui/badge";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 import {
   Plus,
@@ -34,17 +32,22 @@ import {
   PieChart as PieChartIcon,
   ScatterChart as ScatterChartIcon,
   Palette,
+  Eye,
+  EyeOff,
+  Settings2,
+  X,
+  Check,
 } from "lucide-react";
 
 import {
   saveAnalyticsChartAction,
   updateAnalyticsChartAction,
   deleteAnalyticsChartAction,
+  setAnalyticsChartVisibilityAction,
+  updateAnalyticsChartLayoutAction,
 } from "../actions/analytics-actions";
 
-import {
-  AnalyticsChart,
-} from "./analytics-chart";
+import { AnalyticsChart } from "./analytics-chart";
 
 import type {
   AnalyticsChartConfig,
@@ -65,97 +68,82 @@ const COLORS = [
   "#db2777",
 ];
 
+const DEFAULT_WIDTH = 560;
+const DEFAULT_HEIGHT = 360;
+
 const CHART_DEFAULTS: AnalyticsChartConfig = {
-  title:
-    "New analytics",
-  chartType:
-    "line",
-  displayMode:
-    "periods",
+  title: "New analytics",
+  chartType: "line",
+  displayMode: "periods",
   series: [],
-  showLegend:
-    true,
-  showGrid:
-    true,
-  showValues:
-    false,
+  showLegend: true,
+  showGrid: true,
+  showValues: false,
+  width: DEFAULT_WIDTH,
+  height: DEFAULT_HEIGHT,
+  isVisible: true,
 };
 
-type Props =
-  AnalyticsDashboardData;
+type Props = AnalyticsDashboardData;
 
 function makeSeries(
   modelData: AnalyticsModelData,
   sourceKey: string,
-  index: number
+  index: number,
 ): AnalyticsSeriesConfig {
   const source = modelData.sources.find(
-    item => item.sourceKey === sourceKey
+    (item) => item.sourceKey === sourceKey,
   );
 
   return {
     id: `${Date.now()}-${index}`,
     sourceKey,
     scenarioId: "base",
-    label: source?.name ?? "Series",
+    label: source?.name ?? "",
     color: COLORS[index % COLORS.length],
+  };
+}
+
+function emptyConfigForModel(
+  modelData: AnalyticsModelData,
+): AnalyticsChartConfig {
+  const firstSource = modelData.sources[0];
+
+  return {
+    ...CHART_DEFAULTS,
+    title: firstSource
+      ? `${firstSource.name} over time`
+      : "New analytics",
+    series: firstSource
+      ? [makeSeries(modelData, firstSource.sourceKey, 0)]
+      : [],
   };
 }
 
 function getSourceLabel(
   modelData: AnalyticsModelData,
-  sourceKey: string
+  sourceKey: string,
 ) {
   return (
     modelData.sources.find(
-      source =>
-        source.sourceKey ===
-        sourceKey
-    )?.name ??
-    "Unknown source"
+      (source) => source.sourceKey === sourceKey,
+    )?.name ?? "Unknown source"
   );
 }
 
 function getScenarioLabel(
   modelData: AnalyticsModelData,
-  scenarioId: string
+  scenarioId: string,
 ) {
-  if (
-    scenarioId ===
-    "base"
-  ) {
+  if (scenarioId === "base") {
     return "Base model";
   }
 
   return (
     modelData.scenarios.find(
-      scenario =>
-        scenario.id ===
-        scenarioId
-    )?.name ??
-    "Unknown scenario"
+      (scenario) => scenario.id === scenarioId,
+    )?.name ?? "Unknown scenario"
   );
-}
-
-function emptyConfigForModel(
-  modelData: AnalyticsModelData
-): AnalyticsChartConfig {
-  const firstSource =
-    modelData.sources[0];
-
-  return {
-    ...CHART_DEFAULTS,
-    title:
-      firstSource
-        ? `${firstSource.name} over time`
-        : "New analytics",
-    series:
-      firstSource
-        ? [
-            makeSeries(modelData, firstSource.sourceKey, 0),
-          ]
-        : [],
-  };
 }
 
 function ChartTypeIcon({
@@ -165,24 +153,240 @@ function ChartTypeIcon({
 }) {
   if (type === "line") {
     return (
-      <LineChartIcon className="size-4" />
+      <LineChartIcon className="size-4 text-primary" />
     );
   }
 
   if (type === "bar") {
     return (
-      <BarChart3 className="size-4" />
+      <BarChart3 className="size-4 text-primary" />
     );
   }
 
   if (type === "pie") {
     return (
-      <PieChartIcon className="size-4" />
+      <PieChartIcon className="size-4 text-primary" />
     );
   }
 
   return (
-    <ScatterChartIcon className="size-4" />
+    <ScatterChartIcon className="size-4 text-primary" />
+  );
+}
+
+function ResizeHandle({
+  onResize,
+}: {
+  onResize: (
+    width: number,
+    height: number,
+  ) => void;
+}) {
+  const resizing = useRef(false);
+
+  const start = useRef({
+    x: 0,
+    y: 0,
+    width: 0,
+    height: 0,
+  });
+
+  function handlePointerDown(
+    event: PointerEvent<HTMLButtonElement>,
+  ) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    resizing.current = true;
+
+    const element =
+      event.currentTarget.parentElement;
+
+    start.current = {
+      x: event.clientX,
+      y: event.clientY,
+      width: element?.getBoundingClientRect().width ?? 0,
+      height: element?.getBoundingClientRect().height ?? 0,
+    };
+
+    event.currentTarget.setPointerCapture(
+      event.pointerId,
+    );
+  }
+
+  function handlePointerMove(
+    event: PointerEvent<HTMLButtonElement>,
+  ) {
+    if (!resizing.current) {
+      return;
+    }
+
+    const width = Math.max(
+      320,
+      Math.min(
+        1400,
+        start.current.width +
+          event.clientX -
+          start.current.x,
+      ),
+    );
+
+    const height = Math.max(
+      280,
+      Math.min(
+        900,
+        start.current.height +
+          event.clientY -
+          start.current.y,
+      ),
+    );
+
+    onResize(
+      Math.round(width),
+      Math.round(height),
+    );
+  }
+
+  function handlePointerUp(
+    event: PointerEvent<HTMLButtonElement>,
+  ) {
+    resizing.current = false;
+
+    try {
+      event.currentTarget.releasePointerCapture(
+        event.pointerId,
+      );
+    } catch {
+      // Pointer capture may already have been released.
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      aria-label="Resize chart"
+      className="absolute bottom-0 right-0 z-10 flex size-7 cursor-nwse-resize items-end justify-end rounded-tl-md bg-background/90 p-1.5 text-muted-foreground shadow-sm"
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
+      onClick={(event) => event.stopPropagation()}
+    >
+      <span className="flex h-4 w-4 items-end justify-end">
+        <span className="block h-1.5 w-1.5 rounded-sm border-b-2 border-r-2 border-muted-foreground" />
+      </span>
+    </button>
+  );
+}
+
+function ChartCard({
+  chart,
+  modelData,
+  onEdit,
+  onHide,
+  onDelete,
+  onResize,
+}: {
+  chart: AnalyticsChartRecord;
+  modelData: AnalyticsModelData;
+  onEdit: (
+    chart: AnalyticsChartRecord,
+  ) => void;
+  onHide: (
+    chart: AnalyticsChartRecord,
+  ) => void;
+  onDelete: (
+    chart: AnalyticsChartRecord,
+  ) => void;
+  onResize: (
+    chart: AnalyticsChartRecord,
+    width: number,
+    height: number,
+  ) => void;
+}) {
+  const width =
+    chart.config.width ?? DEFAULT_WIDTH;
+
+  const height =
+    chart.config.height ?? DEFAULT_HEIGHT;
+
+  return (
+    <article
+      className="relative min-w-[320px] max-w-full overflow-hidden rounded-xl border bg-background shadow-sm"
+      style={{
+        width,
+        height,
+      }}
+    >
+      <div className="flex h-12 items-center justify-between border-b px-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <ChartTypeIcon
+            type={chart.config.chartType}
+          />
+
+          <h3 className="truncate text-sm font-semibold">
+            {chart.name}
+          </h3>
+        </div>
+
+        <div className="flex shrink-0 items-center gap-0.5">
+          <Button
+            type="button"
+            size="icon-sm"
+            variant="ghost"
+            aria-label="Edit chart"
+            onClick={() => onEdit(chart)}
+          >
+            <Pencil />
+          </Button>
+
+          <Button
+            type="button"
+            size="icon-sm"
+            variant="ghost"
+            aria-label="Hide chart"
+            onClick={() => onHide(chart)}
+          >
+            <EyeOff />
+          </Button>
+
+          <Button
+            type="button"
+            size="icon-sm"
+            variant="ghost"
+            className="text-destructive hover:text-destructive"
+            aria-label="Delete chart"
+            onClick={() => onDelete(chart)}
+          >
+            <X />
+          </Button>
+        </div>
+      </div>
+
+      <div className="h-[calc(100%-3rem)] w-full p-3">
+        <AnalyticsChart
+          modelData={modelData}
+          config={{
+            ...chart.config,
+            width,
+            height: Math.max(
+              280,
+              height - 48,
+            ),
+          }}
+        />
+      </div>
+
+      <ResizeHandle
+        onResize={(nextWidth, nextHeight) =>
+          onResize(
+            chart,
+            nextWidth,
+            nextHeight,
+          )
+        }
+      />
+    </article>
   );
 }
 
@@ -190,58 +394,53 @@ export default function AnalyticsWorkspace({
   models,
   charts,
 }: Props) {
-  const router =
-    useRouter();
-
-  const initialModelId =
-    models[0]?.model.id ??
-    "";
+  const router = useRouter();
 
   const [
     selectedModelId,
     setSelectedModelId,
-  ] = useState(
-    initialModelId
-  );
+  ] = useState("");
 
   const [
     editingChartId,
     setEditingChartId,
-  ] = useState<
-    string | null
-  >(null);
-
-  const selectedModel =
-    models.find(
-      model =>
-        model.model.id ===
-        selectedModelId
-    ) ?? models[0];
+  ] = useState<string | null>(null);
 
   const [
     config,
     setConfig,
-  ] =
-    useState<AnalyticsChartConfig>(
-      () =>
-        selectedModel
-          ? emptyConfigForModel(
-              selectedModel
-            )
-          : CHART_DEFAULTS
-    );
+  ] = useState<AnalyticsChartConfig>(
+    CHART_DEFAULTS,
+  );
 
   const [
     chartName,
     setChartName,
-  ] = useState(
-    config.title
-  );
+  ] = useState("");
 
   const [
     isBuilderOpen,
     setIsBuilderOpen,
   ] = useState(false);
+
+  const [
+    isManageOpen,
+    setIsManageOpen,
+  ] = useState(false);
+
+  const [
+    deleteTarget,
+    setDeleteTarget,
+  ] = useState<AnalyticsChartRecord | null>(
+    null,
+  );
+
+  const [
+    hideTarget,
+    setHideTarget,
+  ] = useState<AnalyticsChartRecord | null>(
+    null,
+  );
 
   const [
     isSaving,
@@ -251,113 +450,170 @@ export default function AnalyticsWorkspace({
   const [
     error,
     setError,
+  ] = useState<string | null>(null);
+
+  const [
+    resizing,
+    setResizing,
   ] = useState<
-    string | null
-  >(null);
+    Record<
+      string,
+      {
+        width: number;
+        height: number;
+      }
+    >
+  >({});
 
-  const modelCharts =
-    useMemo(
-      () =>
-        charts.filter(
-          chart =>
-            chart.modelId ===
-            selectedModel?.model.id
-        ),
-      [
-        charts,
-        selectedModel,
-      ]
-    );
+  const modelMap = useMemo(
+    () =>
+      new Map(
+        models.map((model) => [
+          model.model.id,
+          model,
+        ]),
+      ),
+    [models],
+  );
 
-  function resetBuilder(
-    model: AnalyticsModelData
-  ) {
-    const next =
-      emptyConfigForModel(
-        model
+  const visibleCharts = useMemo(
+    () =>
+      charts.filter(
+        (chart) =>
+          chart.config.isVisible !== false,
+      ),
+    [charts],
+  );
+
+  const hiddenCharts = useMemo(
+    () =>
+      charts.filter(
+        (chart) =>
+          chart.config.isVisible === false,
+      ),
+    [charts],
+  );
+
+  const selectedModel =
+    modelMap.get(selectedModelId);
+
+  useEffect(() => {
+    if (
+      isBuilderOpen &&
+      !selectedModelId &&
+      models[0]
+    ) {
+      setSelectedModelId(
+        models[0].model.id,
       );
+    }
+  }, [
+    isBuilderOpen,
+    selectedModelId,
+    models,
+  ]);
 
-    setEditingChartId(
-      null
+  function openCreate() {
+    const firstModel = models[0];
+
+    if (!firstModel) {
+      return;
+    }
+
+    setSelectedModelId(
+      firstModel.model.id,
     );
 
+    const next =
+      emptyConfigForModel(firstModel);
+
+    setEditingChartId(null);
     setConfig(next);
-    setChartName(
-      next.title
-    );
+    setChartName(next.title);
     setError(null);
-    setIsBuilderOpen(
-      true
-    );
+    setIsBuilderOpen(true);
   }
 
-  function openEdit(
-    chart: AnalyticsChartRecord
+  function changeBuilderModel(
+    modelId: string,
   ) {
-    const model =
-      models.find(
-        item =>
-          item.model.id ===
-          chart.modelId
-      );
+    const model = modelMap.get(modelId);
 
     if (!model) {
       return;
     }
 
-    setSelectedModelId(
-      chart.modelId
+    setSelectedModelId(modelId);
+
+    if (!editingChartId) {
+      const next =
+        emptyConfigForModel(model);
+
+      setConfig(next);
+      setChartName(next.title);
+    }
+  }
+
+  function openEdit(
+    chart: AnalyticsChartRecord,
+  ) {
+    const model = modelMap.get(
+      chart.modelId,
     );
 
-    setEditingChartId(
-      chart.id
-    );
+    if (!model) {
+      setError(
+        "The model for this chart is no longer available.",
+      );
+      return;
+    }
 
-    setConfig(
-      chart.config
-    );
+    setSelectedModelId(chart.modelId);
+    setEditingChartId(chart.id);
 
-    setChartName(
-      chart.name
-    );
+    setConfig({
+      ...chart.config,
+      width:
+        chart.config.width ??
+        DEFAULT_WIDTH,
+      height:
+        chart.config.height ??
+        DEFAULT_HEIGHT,
+      isVisible:
+        chart.config.isVisible ??
+        true,
+    });
 
+    setChartName(chart.name);
     setError(null);
-    setIsBuilderOpen(
-      true
-    );
+    setIsBuilderOpen(true);
   }
 
   function updateConfig(
-    patch: Partial<AnalyticsChartConfig>
+    patch: Partial<AnalyticsChartConfig>,
   ) {
-    setConfig(
-      current => ({
-        ...current,
-        ...patch,
-      })
-    );
+    setConfig((current) => ({
+      ...current,
+      ...patch,
+    }));
   }
 
   function updateSeries(
     id: string,
-    patch: Partial<AnalyticsSeriesConfig>
+    patch: Partial<AnalyticsSeriesConfig>,
   ) {
-    setConfig(
-      current => ({
-        ...current,
-        series:
-          current.series.map(
-            series =>
-              series.id ===
-              id
-                ? {
-                    ...series,
-                    ...patch,
-                  }
-                : series
-          ),
-      })
-    );
+    setConfig((current) => ({
+      ...current,
+      series: current.series.map(
+        (series) =>
+          series.id === id
+            ? {
+                ...series,
+                ...patch,
+              }
+            : series,
+      ),
+    }));
   }
 
   function addSeries() {
@@ -367,89 +623,99 @@ export default function AnalyticsWorkspace({
 
     const source =
       selectedModel.sources.find(
-        item =>
+        (item) =>
           !config.series.some(
-            series =>
+            (series) =>
               series.sourceKey ===
-              item.sourceKey
-          )
+              item.sourceKey,
+          ),
       );
 
     if (!source) {
       return;
     }
 
-    setConfig(
-      current => ({
-        ...current,
-        series: [
-          ...current.series,
-          makeSeries(selectedModel, source.sourceKey, current.series.length),
-        ],
-      })
-    );
+    setConfig((current) => ({
+      ...current,
+      series: [
+        ...current.series,
+        makeSeries(
+          selectedModel,
+          source.sourceKey,
+          current.series.length,
+        ),
+      ],
+    }));
   }
 
-  function removeSeries(
-    id: string
-  ) {
-    setConfig(
-      current => ({
-        ...current,
-        series:
-          current.series.filter(
-            series =>
-              series.id !==
-              id
-          ),
-      })
-    );
+  function removeSeries(id: string) {
+    setConfig((current) => ({
+      ...current,
+      series: current.series.filter(
+        (series) =>
+          series.id !== id,
+      ),
+    }));
   }
 
   async function save() {
     if (!selectedModel) {
+      setError("Select a model first.");
       return;
     }
 
-    if (
-      config.series.length ===
-      0
-    ) {
+    if (config.series.length === 0) {
       setError(
-        "Select at least one input or metric."
+        "Select at least one input or metric.",
       );
       return;
     }
 
     if (
-      config.chartType ===
-        "scatter" &&
-      config.series.length !==
-        2
+      config.chartType === "scatter" &&
+      config.series.length !== 2
     ) {
       setError(
-        "Scatter charts require exactly two series."
+        "Scatter charts require exactly two series.",
       );
       return;
     }
 
-    setIsSaving(
-      true
-    );
+    setIsSaving(true);
     setError(null);
 
     const payload = {
-      modelId:
-        selectedModel.model.id,
+      modelId: selectedModel.model.id,
+
       name:
         chartName.trim() ||
-        config.title,
+        config.title.trim() ||
+        "Analytics",
+
       config: {
         ...config,
+
         title:
           config.title.trim() ||
           chartName.trim() ||
           "Analytics",
+
+        isVisible: true,
+
+        width:
+          config.width ??
+          DEFAULT_WIDTH,
+
+        height:
+          config.height ??
+          DEFAULT_HEIGHT,
+
+        series: config.series.map(
+          (series) => ({
+            ...series,
+            label: series.label.trim(),
+          }),
+        ),
       },
     };
 
@@ -458,175 +724,214 @@ export default function AnalyticsWorkspace({
         editingChartId
           ? await updateAnalyticsChartAction(
               editingChartId,
-              payload
+              payload,
             )
           : await saveAnalyticsChartAction(
-              payload
+              payload,
             );
 
       if (!result.success) {
         setError(
           result.error ??
-            "Unable to save analytics."
+            "Unable to save analytics.",
         );
         return;
       }
 
-      setIsBuilderOpen(
-        false
-      );
-
-      setEditingChartId(
-        null
-      );
-
+      setIsBuilderOpen(false);
+      setEditingChartId(null);
       router.refresh();
     } catch (saveError) {
-      console.error(
-        saveError
-      );
+      console.error(saveError);
 
       setError(
-        "An unexpected error occurred while saving."
+        "An unexpected error occurred while saving.",
       );
     } finally {
-      setIsSaving(
-        false
-      );
+      setIsSaving(false);
     }
   }
 
-  async function removeChart(
-    chartId: string
-  ) {
-    if (
-      !window.confirm(
-        "Delete this analytics chart?"
-      )
-    ) {
+  async function confirmDelete() {
+    if (!deleteTarget) {
       return;
     }
 
-    try {
-      const result =
-        await deleteAnalyticsChartAction(
-          chartId
-        );
+    const chart = deleteTarget;
 
-      if (!result.success) {
-        setError(
-          result.error ??
-            "Unable to delete chart."
-        );
-        return;
-      }
+    setDeleteTarget(null);
 
-      router.refresh();
-    } catch (deleteError) {
-      console.error(
-        deleteError
+    const result =
+      await deleteAnalyticsChartAction(
+        chart.id,
       );
 
+    if (!result.success) {
       setError(
-        "Unable to delete chart."
+        result.error ??
+          "Unable to delete chart.",
       );
+      return;
     }
+
+    router.refresh();
   }
+
+  async function confirmHide() {
+    if (!hideTarget) {
+      return;
+    }
+
+    const chart = hideTarget;
+
+    setHideTarget(null);
+
+    const result =
+      await setAnalyticsChartVisibilityAction(
+        chart.id,
+        false,
+      );
+
+    if (!result.success) {
+      setError(
+        result.error ??
+          "Unable to hide chart.",
+      );
+      return;
+    }
+
+    router.refresh();
+  }
+
+  async function restoreChart(
+    chart: AnalyticsChartRecord,
+  ) {
+    const result =
+      await setAnalyticsChartVisibilityAction(
+        chart.id,
+        true,
+      );
+
+    if (!result.success) {
+      setError(
+        result.error ??
+          "Unable to restore chart.",
+      );
+      return;
+    }
+
+    router.refresh();
+  }
+
+  function resizeChart(
+    chart: AnalyticsChartRecord,
+    width: number,
+    height: number,
+  ) {
+    setResizing((current) => ({
+      ...current,
+
+      [chart.id]: {
+        width,
+        height,
+      },
+    }));
+  }
+
+  useEffect(() => {
+    const entries =
+      Object.entries(resizing);
+
+    if (entries.length === 0) {
+      return;
+    }
+
+    const timer =
+      window.setTimeout(
+        async () => {
+          for (
+            const [
+              chartId,
+              dimensions,
+            ] of entries
+          ) {
+            const result =
+              await updateAnalyticsChartLayoutAction(
+                chartId,
+                dimensions,
+              );
+
+            if (!result.success) {
+              console.error(
+                result.error,
+              );
+            }
+          }
+
+          setResizing({});
+          router.refresh();
+        },
+        700,
+      );
+
+    return () =>
+      window.clearTimeout(timer);
+  }, [resizing, router]);
 
   if (models.length === 0) {
-    return null;
-  }
+    return (
+      <section className="rounded-xl border bg-background p-6">
+        <div className="flex size-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+          <BarChart3 className="size-6" />
+        </div>
 
-  if (!selectedModel) {
-    return null;
+        <h2 className="mt-4 font-semibold">
+          No models available
+        </h2>
+
+        <p className="mt-1 text-sm text-muted-foreground">
+          Create or get access to a business
+          model before adding analytics.
+        </p>
+      </section>
+    );
   }
 
   return (
-    <section className="space-y-5">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <section className="space-y-6">
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div>
-          <h2 className="text-lg font-semibold tracking-tight">
+          <h2 className="text-xl font-semibold">
             Analytics
           </h2>
 
           <p className="mt-1 text-sm text-muted-foreground">
-            Build reusable charts from model inputs, metrics and scenarios.
+            Your saved charts appear here
+            automatically.
           </p>
         </div>
 
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <select
-            value={
-              selectedModelId
-            }
-            onChange={event => {
-              const nextModelId =
-                event.target.value;
-
-              const nextModel =
-                models.find(
-                  model =>
-                    model.model.id ===
-                    nextModelId
-                );
-
-              if (!nextModel) {
-                return;
+        <div className="flex items-center gap-2">
+          {hiddenCharts.length > 0 && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() =>
+                setIsManageOpen(true)
               }
+            >
+              <Settings2 />
+              Manage hidden
 
-              setSelectedModelId(
-                nextModelId
-              );
-
-              const nextConfig =
-                emptyConfigForModel(
-                  nextModel
-                );
-
-              setEditingChartId(
-                null
-              );
-
-              setConfig(
-                nextConfig
-              );
-
-              setChartName(
-                nextConfig.title
-              );
-
-              setIsBuilderOpen(
-                false
-              );
-            }}
-            className="h-9 rounded-lg border border-input bg-background px-3 text-sm outline-none focus:border-ring focus:ring-3 focus:ring-ring/30"
-          >
-            {models.map(
-              model => (
-                <option
-                  key={
-                    model.model.id
-                  }
-                  value={
-                    model.model.id
-                  }
-                >
-                  {
-                    model.model
-                      .name
-                  }
-                </option>
-              )
-            )}
-          </select>
+              <span className="ml-1 rounded-full bg-muted px-1.5 text-xs">
+                {hiddenCharts.length}
+              </span>
+            </Button>
+          )}
 
           <Button
             type="button"
-            onClick={() =>
-              resetBuilder(
-                selectedModel
-              )
-            }
+            onClick={openCreate}
           >
             <Plus />
             Add analytics
@@ -635,168 +940,145 @@ export default function AnalyticsWorkspace({
       </div>
 
       {error && (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-          {error}
+        <div className="flex items-start justify-between gap-4 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+          <span>{error}</span>
+
+          <button
+            type="button"
+            onClick={() =>
+              setError(null)
+            }
+            aria-label="Dismiss error"
+          >
+            <X className="size-4" />
+          </button>
         </div>
       )}
 
-      {modelCharts.length ===
-      0 ? (
-        <div className="rounded-xl border border-dashed bg-background p-8 text-center">
-          <div className="mx-auto flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
-            <BarChart3 className="size-5" />
+      {visibleCharts.length === 0 ? (
+        <div className="rounded-xl border border-dashed bg-background p-10 text-center">
+          <div className="mx-auto flex size-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <BarChart3 className="size-6" />
           </div>
 
           <h3 className="mt-4 font-semibold">
-            No analytics yet
+            No analytics on your dashboard
           </h3>
 
           <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
-            Create a chart from any numeric input or metric in this model.
-            You can also compare different scenarios.
+            Create your first chart from an
+            input or metric in any model.
           </p>
 
           <Button
             className="mt-5"
             type="button"
-            onClick={() =>
-              resetBuilder(
-                selectedModel
-              )
-            }
+            onClick={openCreate}
           >
             <Plus />
-            Create your first chart
+            Add your first chart
           </Button>
         </div>
       ) : (
-        <div className="grid gap-5 lg:grid-cols-2">
-          {modelCharts.map(
-            chart => (
-              <div
-                key={
-                  chart.id
-                }
-                className="overflow-hidden rounded-xl border bg-background shadow-sm"
-              >
-                <div className="flex items-start justify-between gap-4 border-b px-5 py-4">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <ChartTypeIcon
-                        type={
-                          chart
-                            .config
-                            .chartType
-                        }
-                      />
+        <div className="flex flex-wrap items-start gap-5">
+          {visibleCharts.map((chart) => {
+            const model = modelMap.get(
+              chart.modelId,
+            );
 
-                      <h3 className="truncate font-semibold">
-                        {
-                          chart.name
-                        }
-                      </h3>
-                    </div>
+            if (!model) {
+              return null;
+            }
 
-                    <div className="mt-2 flex flex-wrap gap-1.5">
-                      <Badge variant="secondary">
-                        {
-                          chart
-                            .config
-                            .chartType
-                        }
-                      </Badge>
+            const dimensions =
+              resizing[chart.id];
 
-                      <Badge variant="secondary">
-                        {
-                          chart
-                            .config
-                            .series
-                            .length
-                        }{" "}
-                        series
-                      </Badge>
-                    </div>
-                  </div>
+            const effectiveChart =
+              dimensions
+                ? {
+                    ...chart,
+                    config: {
+                      ...chart.config,
+                      width:
+                        dimensions.width,
+                      height:
+                        dimensions.height,
+                    },
+                  }
+                : chart;
 
-                  <div className="flex shrink-0 gap-1">
-                    <Button
-                      type="button"
-                      size="icon-sm"
-                      variant="ghost"
-                      aria-label="Edit analytics"
-                      onClick={() =>
-                        openEdit(
-                          chart
-                        )
-                      }
-                    >
-                      <Pencil />
-                    </Button>
-
-                    <Button
-                      type="button"
-                      size="icon-sm"
-                      variant="ghost"
-                      aria-label="Delete analytics"
-                      onClick={() =>
-                        removeChart(
-                          chart.id
-                        )
-                      }
-                    >
-                      <Trash2 />
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="p-4">
-                  <AnalyticsChart
-                    modelData={
-                      selectedModel
-                    }
-                    config={
-                      chart.config
-                    }
-                    compact
-                  />
-                </div>
-              </div>
-            )
-          )}
+            return (
+              <ChartCard
+                key={chart.id}
+                chart={effectiveChart}
+                modelData={model}
+                onEdit={openEdit}
+                onHide={setHideTarget}
+                onDelete={setDeleteTarget}
+                onResize={resizeChart}
+              />
+            );
+          })}
         </div>
       )}
 
-      {isBuilderOpen && (
-        <div className="rounded-xl border bg-background shadow-sm">
-          <div className="flex items-start justify-between gap-4 border-b px-5 py-5">
-            <div>
-              <h3 className="font-semibold">
-                {editingChartId
-                  ? "Edit analytics"
-                  : "Create analytics"}
-              </h3>
+      <Dialog
+        open={isBuilderOpen}
+        onOpenChange={(open) => {
+          setIsBuilderOpen(open);
 
-              <p className="mt-1 text-sm text-muted-foreground">
-                Configure the data, visualization and colours.
-              </p>
-            </div>
+          if (!open) {
+            setEditingChartId(null);
+          }
+        }}
+      >
+        <DialogContent className="max-h-[92vh] max-w-6xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {editingChartId
+                ? "Edit analytics"
+                : "Add analytics"}
+            </DialogTitle>
 
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() =>
-                setIsBuilderOpen(
-                  false
-                )
-              }
-            >
-              Close
-            </Button>
-          </div>
+            <DialogDescription>
+              Choose a model, select the values
+              you want to analyse, then
+              customise the chart.
+            </DialogDescription>
+          </DialogHeader>
 
-          <div className="grid gap-6 p-5 xl:grid-cols-[minmax(0,1fr)_420px]">
-            <div className="space-y-6">
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
+            <div className="space-y-5">
               <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="analytics-model">
+                    Model
+                  </Label>
+
+                  <select
+                    id="analytics-model"
+                    value={selectedModelId}
+                    disabled={Boolean(
+                      editingChartId,
+                    )}
+                    onChange={(event) =>
+                      changeBuilderModel(
+                        event.target.value,
+                      )
+                    }
+                    className="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus:border-ring focus:ring-3 focus:ring-ring/30 disabled:opacity-60"
+                  >
+                    {models.map((model) => (
+                      <option
+                        key={model.model.id}
+                        value={model.model.id}
+                      >
+                        {model.model.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="analytics-name">
                     Name
@@ -804,552 +1086,487 @@ export default function AnalyticsWorkspace({
 
                   <Input
                     id="analytics-name"
-                    value={
-                      chartName
-                    }
-                    onChange={event =>
+                    value={chartName}
+                    onChange={(event) =>
                       setChartName(
-                        event
-                          .target
-                          .value
+                        event.target.value,
                       )
                     }
-                    placeholder="Revenue forecast"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="analytics-title">
-                    Chart title
-                  </Label>
-
-                  <Input
-                    id="analytics-title"
-                    value={
-                      config.title
-                    }
-                    onChange={event =>
-                      updateConfig({
-                        title:
-                          event
-                            .target
-                            .value,
-                      })
-                    }
-                    placeholder="Revenue over time"
+                    placeholder="Annual target"
                   />
                 </div>
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-3">
-                <div className="space-y-2">
-                  <Label>
-                    Chart type
-                  </Label>
+              {selectedModel && (
+                <>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>
+                        Chart type
+                      </Label>
 
-                  <select
-                    value={
-                      config.chartType
-                    }
-                    onChange={event =>
-                      updateConfig({
-                        chartType:
-                          event
-                            .target
-                            .value as AnalyticsChartConfig["chartType"],
-                      })
-                    }
-                    className="h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm outline-none focus:border-ring focus:ring-3 focus:ring-ring/30"
-                  >
-                    <option value="line">
-                      Line
-                    </option>
-                    <option value="bar">
-                      Bar
-                    </option>
-                    <option value="pie">
-                      Pie / donut
-                    </option>
-                    <option value="scatter">
-                      Scatter
-                    </option>
-                  </select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>
-                    Data range
-                  </Label>
-
-                  <select
-                    value={
-                      config.displayMode
-                    }
-                    disabled={
-                      config.chartType ===
-                      "pie"
-                    }
-                    onChange={event =>
-                      updateConfig({
-                        displayMode:
-                          event
-                            .target
-                            .value as AnalyticsChartConfig["displayMode"],
-                      })
-                    }
-                    className="h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm outline-none disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <option value="periods">
-                      All periods
-                    </option>
-                    <option value="latest">
-                      Latest period
-                    </option>
-                  </select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>
-                    Model
-                  </Label>
-
-                  <div className="flex h-8 items-center rounded-lg border bg-muted/30 px-2.5 text-sm">
-                    {
-                      selectedModel
-                        .model
-                        .name
-                    }
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-xl border">
-                <div className="flex items-center justify-between border-b px-4 py-3">
-                  <div>
-                    <h4 className="text-sm font-semibold">
-                      Data series
-                    </h4>
-
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      Select inputs or metrics and optionally compare scenarios.
-                    </p>
-                  </div>
-
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    disabled={
-                      config.series.length >=
-                        6 ||
-                      config.series.length >=
-                        selectedModel
-                          .sources
-                          .length
-                    }
-                    onClick={
-                      addSeries
-                    }
-                  >
-                    <Plus />
-                    Add
-                  </Button>
-                </div>
-
-                <div className="divide-y">
-                  {config.series.map(
-                    (
-                      series,
-                      index
-                    ) => (
-                      <div
-                        key={
-                          series.id
+                      <select
+                        value={
+                          config.chartType
                         }
-                        className="grid gap-3 p-4 md:grid-cols-[minmax(0,1fr)_minmax(0,180px)_42px_36px]"
+                        onChange={(event) => {
+                          const chartType =
+                            event.target
+                              .value as AnalyticsChartConfig["chartType"];
+
+                          updateConfig({
+                            chartType,
+                            displayMode:
+                              chartType ===
+                              "pie"
+                                ? "latest"
+                                : config.displayMode,
+                          });
+                        }}
+                        className="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus:border-ring focus:ring-3 focus:ring-ring/30"
                       >
-                        <div className="space-y-2">
-                          <Label>
-                            Value {index + 1}
-                          </Label>
+                        <option value="line">
+                          Line
+                        </option>
 
-                          <select
-                            value={
-                              series.sourceKey
-                            }
-                            onChange={event =>
-                              updateSeries(
-                                series.id,
-                                {
-                                  sourceKey:
-                                    event
-                                      .target
-                                      .value,
-                                  label:
-                                    "",
-                                }
-                              )
-                            }
-                            className="h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm outline-none focus:border-ring focus:ring-3 focus:ring-ring/30"
-                          >
-                            {selectedModel.sources.map(
-                              source => (
-                                <option
-                                  key={
-                                    source.sourceKey
-                                  }
-                                  value={
-                                    source.sourceKey
-                                  }
-                                >
-                                  {
-                                    source.name
-                                  }
-                                  {" · "}
-                                  {
-                                    source.kind
-                                  }
-                                </option>
-                              )
-                            )}
-                          </select>
-                        </div>
+                        <option value="bar">
+                          Bar
+                        </option>
 
-                        <div className="space-y-2">
-                          <Label>
-                            Scenario
-                          </Label>
+                        <option value="pie">
+                          Pie / donut
+                        </option>
 
-                          <select
-                            value={
-                              series.scenarioId
-                            }
-                            onChange={event =>
-                              updateSeries(
-                                series.id,
-                                {
-                                  scenarioId:
-                                    event
-                                      .target
-                                      .value,
-                                }
-                              )
-                            }
-                            className="h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm outline-none focus:border-ring focus:ring-3 focus:ring-ring/30"
-                          >
-                            <option value="base">
-                              Base model
-                            </option>
-
-                            {selectedModel.scenarios.map(
-                              scenario => (
-                                <option
-                                  key={
-                                    scenario.id
-                                  }
-                                  value={
-                                    scenario.id
-                                  }
-                                >
-                                  {
-                                    scenario.name
-                                  }
-                                </option>
-                              )
-                            )}
-                          </select>
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label>
-                            Colour
-                          </Label>
-
-                          <div className="flex h-8 items-center justify-center rounded-lg border border-input bg-background">
-                            <input
-                              type="color"
-                              value={
-                                series.color
-                              }
-                              onChange={event =>
-                                updateSeries(
-                                  series.id,
-                                  {
-                                    color:
-                                      event
-                                        .target
-                                        .value,
-                                  }
-                                )
-                              }
-                              className="size-6 cursor-pointer rounded border-0 bg-transparent p-0"
-                              aria-label="Series colour"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="flex items-end">
-                          <Button
-                            type="button"
-                            size="icon-sm"
-                            variant="ghost"
-                            disabled={
-                              config.series.length <=
-                              1
-                            }
-                            onClick={() =>
-                              removeSeries(
-                                series.id
-                              )
-                            }
-                            aria-label="Remove series"
-                          >
-                            <Trash2 />
-                          </Button>
-                        </div>
-
-                        <div className="md:col-span-4">
-                          <Input
-                            value={
-                              series.label
-                            }
-                            onChange={event =>
-                              updateSeries(
-                                series.id,
-                                {
-                                  label:
-                                    event
-                                      .target
-                                      .value,
-                                }
-                              )
-                            }
-                            placeholder={`Optional label — defaults to ${getSourceLabel(
-                              selectedModel,
-                              series.sourceKey
-                            )} · ${getScenarioLabel(
-                              selectedModel,
-                              series.scenarioId
-                            )}`}
-                          />
-                        </div>
-                      </div>
-                    )
-                  )}
-
-                  {config.series.length ===
-                    0 && (
-                    <div className="p-6 text-center text-sm text-muted-foreground">
-                      Add a data series to begin.
+                        <option value="scatter">
+                          Scatter
+                        </option>
+                      </select>
                     </div>
-                  )}
-                </div>
-              </div>
 
-              <div className="rounded-xl border">
-                <div className="border-b px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <Palette className="size-4" />
+                    <div className="space-y-2">
+                      <Label>
+                        Chart title
+                      </Label>
 
-                    <h4 className="text-sm font-semibold">
-                      Appearance
-                    </h4>
+                      <Input
+                        value={config.title}
+                        onChange={(event) =>
+                          updateConfig({
+                            title:
+                              event.target
+                                .value,
+                          })
+                        }
+                        placeholder="Annual target over time"
+                      />
+                    </div>
                   </div>
-                </div>
 
-                <div className="grid gap-4 p-4 sm:grid-cols-3">
-                  <label className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={
-                        config.showLegend
+                  <div className="space-y-2">
+                    <Label>
+                      Data range
+                    </Label>
+
+                    <select
+                      value={
+                        config.displayMode
                       }
-                      onChange={event =>
+                      disabled={
+                        config.chartType ===
+                        "pie"
+                      }
+                      onChange={(event) =>
                         updateConfig({
-                          showLegend:
-                            event
-                              .target
-                              .checked,
+                          displayMode:
+                            event.target
+                              .value as AnalyticsChartConfig["displayMode"],
                         })
                       }
-                      className="size-4 rounded"
-                    />
-                    Show legend
-                  </label>
+                      className="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus:border-ring focus:ring-3 focus:ring-ring/30 disabled:opacity-50"
+                    >
+                      <option value="periods">
+                        All periods
+                      </option>
 
-                  <label className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={
-                        config.showGrid
-                      }
-                      onChange={event =>
-                        updateConfig({
-                          showGrid:
-                            event
-                              .target
-                              .checked,
-                        })
-                      }
-                      className="size-4 rounded"
-                    />
-                    Show grid
-                  </label>
+                      <option value="latest">
+                        Latest period
+                      </option>
+                    </select>
+                  </div>
 
-                  <label className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={
-                        config.showValues
-                      }
-                      onChange={event =>
-                        updateConfig({
-                          showValues:
-                            event
-                              .target
-                              .checked,
-                        })
-                      }
-                      className="size-4 rounded"
-                    />
-                    Show values
-                  </label>
-                </div>
+                  <div className="rounded-xl border">
+                    <div className="flex items-center justify-between border-b px-4 py-3">
+                      <div>
+                        <h4 className="text-sm font-semibold">
+                          Values
+                        </h4>
 
-                <div className="flex flex-wrap gap-2 border-t p-4">
-                  <span className="mr-1 text-xs text-muted-foreground">
-                    Quick palette:
-                  </span>
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          Pick inputs or metrics
+                          and optionally compare
+                          scenarios.
+                        </p>
+                      </div>
 
-                  {[
-                    COLORS.slice(
-                      0,
-                      4
-                    ),
-                    [
-                      "#0f172a",
-                      "#475569",
-                      "#94a3b8",
-                      "#cbd5e1",
-                    ],
-                    [
-                      "#0369a1",
-                      "#0891b2",
-                      "#14b8a6",
-                      "#22c55e",
-                    ],
-                    [
-                      "#7c3aed",
-                      "#c026d3",
-                      "#db2777",
-                      "#e11d48",
-                    ],
-                  ].map(
-                    (
-                      palette,
-                      paletteIndex
-                    ) => (
-                      <button
-                        key={
-                          paletteIndex
-                        }
+                      <Button
                         type="button"
-                        className="flex h-7 overflow-hidden rounded-md border"
-                        onClick={() =>
-                          setConfig(
-                            current => ({
-                              ...current,
-                              series:
-                                current.series.map(
-                                  (
-                                    series,
-                                    index
-                                  ) => ({
-                                    ...series,
-                                    color:
-                                      palette[
-                                        index %
-                                          palette.length
-                                      ],
-                                  })
-                                ),
-                            })
-                          )
+                        size="sm"
+                        variant="outline"
+                        disabled={
+                          config.series.length >=
+                            6 ||
+                          config.series.length >=
+                            selectedModel
+                              .sources.length
                         }
-                        aria-label={`Apply colour palette ${paletteIndex + 1}`}
+                        onClick={addSeries}
                       >
-                        {palette.map(
-                          color => (
-                            <span
-                              key={
-                                color
-                              }
-                              className="h-full w-5"
-                              style={{
-                                backgroundColor:
-                                  color,
-                              }}
-                            />
-                          )
-                        )}
-                      </button>
-                    )
-                  )}
-                </div>
-              </div>
+                        <Plus />
+                        Add value
+                      </Button>
+                    </div>
 
-              {config.chartType ===
-                "scatter" && (
-                <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900">
-                  Scatter uses the first selected series as X and the second as Y, with each model period represented as one observation.
-                </div>
+                    <div className="divide-y">
+                      {config.series.map(
+                        (series, index) => (
+                          <div
+                            key={series.id}
+                            className="grid gap-3 p-4 sm:grid-cols-[minmax(0,1fr)_180px_44px]"
+                          >
+                            <div className="space-y-2">
+                              <Label>
+                                Value{" "}
+                                {index + 1}
+                              </Label>
+
+                              <select
+                                value={
+                                  series.sourceKey
+                                }
+                                onChange={(
+                                  event,
+                                ) =>
+                                  updateSeries(
+                                    series.id,
+                                    {
+                                      sourceKey:
+                                        event
+                                          .target
+                                          .value,
+                                      label: "",
+                                    },
+                                  )
+                                }
+                                className="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus:border-ring focus:ring-3 focus:ring-ring/30"
+                              >
+                                {selectedModel.sources.map(
+                                  (source) => (
+                                    <option
+                                      key={
+                                        source.sourceKey
+                                      }
+                                      value={
+                                        source.sourceKey
+                                      }
+                                    >
+                                      {source.name}
+                                      {" · "}
+                                      {source.kind}
+                                    </option>
+                                  ),
+                                )}
+                              </select>
+
+                              <Input
+                                value={
+                                  series.label
+                                }
+                                onChange={(
+                                  event,
+                                ) =>
+                                  updateSeries(
+                                    series.id,
+                                    {
+                                      label:
+                                        event
+                                          .target
+                                          .value,
+                                    },
+                                  )
+                                }
+                                placeholder={`Optional label — defaults to ${getSourceLabel(
+                                  selectedModel,
+                                  series.sourceKey,
+                                )} · ${getScenarioLabel(
+                                  selectedModel,
+                                  series.scenarioId,
+                                )}`}
+                              />
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label>
+                                Scenario
+                              </Label>
+
+                              <select
+                                value={
+                                  series.scenarioId
+                                }
+                                onChange={(
+                                  event,
+                                ) =>
+                                  updateSeries(
+                                    series.id,
+                                    {
+                                      scenarioId:
+                                        event
+                                          .target
+                                          .value,
+                                    },
+                                  )
+                                }
+                                className="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus:border-ring focus:ring-3 focus:ring-ring/30"
+                              >
+                                <option value="base">
+                                  Base model
+                                </option>
+
+                                {selectedModel.scenarios.map(
+                                  (scenario) => (
+                                    <option
+                                      key={
+                                        scenario.id
+                                      }
+                                      value={
+                                        scenario.id
+                                      }
+                                    >
+                                      {
+                                        scenario.name
+                                      }
+                                    </option>
+                                  ),
+                                )}
+                              </select>
+
+                              <div className="flex h-9 items-center gap-2 rounded-lg border border-input bg-background px-3">
+                                <Palette className="size-4 text-muted-foreground" />
+
+                                <input
+                                  type="color"
+                                  value={
+                                    series.color
+                                  }
+                                  onChange={(
+                                    event,
+                                  ) =>
+                                    updateSeries(
+                                      series.id,
+                                      {
+                                        color:
+                                          event
+                                            .target
+                                            .value,
+                                      },
+                                    )
+                                  }
+                                  className="size-6 cursor-pointer rounded border-0 bg-transparent p-0"
+                                  aria-label="Series colour"
+                                />
+
+                                <span className="text-xs text-muted-foreground">
+                                  {
+                                    series.color
+                                  }
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-end justify-end">
+                              <Button
+                                type="button"
+                                size="icon-sm"
+                                variant="ghost"
+                                disabled={
+                                  config.series
+                                    .length <=
+                                  1
+                                }
+                                onClick={() =>
+                                  removeSeries(
+                                    series.id,
+                                  )
+                                }
+                                aria-label="Remove value"
+                              >
+                                <Trash2 />
+                              </Button>
+                            </div>
+                          </div>
+                        ),
+                      )}
+                    </div>
+
+                    <div className="flex flex-wrap gap-2 border-t p-4">
+                      <span className="mr-1 self-center text-xs text-muted-foreground">
+                        Quick colours
+                      </span>
+
+                      {[
+                        COLORS.slice(0, 4),
+
+                        [
+                          "#0f172a",
+                          "#475569",
+                          "#94a3b8",
+                          "#cbd5e1",
+                        ],
+
+                        [
+                          "#0369a1",
+                          "#0891b2",
+                          "#14b8a6",
+                          "#22c55e",
+                        ],
+
+                        [
+                          "#7c3aed",
+                          "#c026d3",
+                          "#db2777",
+                          "#e11d48",
+                        ],
+                      ].map(
+                        (
+                          palette,
+                          paletteIndex,
+                        ) => (
+                          <button
+                            key={
+                              paletteIndex
+                            }
+                            type="button"
+                            className="flex h-7 overflow-hidden rounded-md border"
+                            onClick={() =>
+                              setConfig(
+                                (current) => ({
+                                  ...current,
+                                  series:
+                                    current.series.map(
+                                      (
+                                        series,
+                                        index,
+                                      ) => ({
+                                        ...series,
+                                        color:
+                                          palette[
+                                            index %
+                                              palette.length
+                                          ],
+                                      }),
+                                    ),
+                                }),
+                              )
+                            }
+                            aria-label={`Apply colour palette ${
+                              paletteIndex + 1
+                            }`}
+                          >
+                            {palette.map(
+                              (color) => (
+                                <span
+                                  key={color}
+                                  className="h-full w-5"
+                                  style={{
+                                    backgroundColor:
+                                      color,
+                                  }}
+                                />
+                              ),
+                            )}
+                          </button>
+                        ),
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border">
+                    <div className="flex items-center gap-2 border-b px-4 py-3">
+                      <Palette className="size-4" />
+
+                      <h4 className="text-sm font-semibold">
+                        Appearance
+                      </h4>
+                    </div>
+
+                    <div className="grid gap-3 p-4 sm:grid-cols-3">
+                      <label className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={
+                            config.showLegend
+                          }
+                          onChange={(event) =>
+                            updateConfig({
+                              showLegend:
+                                event.target
+                                  .checked,
+                            })
+                          }
+                          className="size-4 rounded"
+                        />
+
+                        Show legend
+                      </label>
+
+                      <label className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={
+                            config.showGrid
+                          }
+                          onChange={(event) =>
+                            updateConfig({
+                              showGrid:
+                                event.target
+                                  .checked,
+                            })
+                          }
+                          className="size-4 rounded"
+                        />
+
+                        Show grid
+                      </label>
+
+                      <label className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={
+                            config.showValues
+                          }
+                          onChange={(event) =>
+                            updateConfig({
+                              showValues:
+                                event.target
+                                  .checked,
+                            })
+                          }
+                          className="size-4 rounded"
+                        />
+
+                        Show values
+                      </label>
+                    </div>
+                  </div>
+                </>
               )}
-
-              {config.chartType ===
-                "pie" && (
-                <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-xs text-blue-900">
-                  Pie charts use the latest period. They are best when the selected values represent parts of a meaningful whole.
-                </div>
-              )}
-
-              <div className="flex justify-end gap-2 border-t pt-5">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() =>
-                    setIsBuilderOpen(
-                      false
-                    )
-                  }
-                >
-                  Cancel
-                </Button>
-
-                <Button
-                  type="button"
-                  disabled={
-                    isSaving ||
-                    config.series.length ===
-                      0
-                  }
-                  onClick={
-                    save
-                  }
-                >
-                  {isSaving
-                    ? "Saving..."
-                    : editingChartId
-                      ? "Update chart"
-                      : "Save chart"}
-                </Button>
-              </div>
             </div>
 
             <div className="min-w-0">
-              <div className="sticky top-4 rounded-xl border bg-muted/10 p-4">
+              <div className="rounded-xl border bg-muted/10 p-4 lg:sticky lg:top-4">
                 <div className="mb-4">
                   <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    Live preview
+                    Preview
                   </p>
 
                   <h4 className="mt-1 font-semibold">
@@ -1358,19 +1575,249 @@ export default function AnalyticsWorkspace({
                   </h4>
                 </div>
 
-                <AnalyticsChart
-                  modelData={
-                    selectedModel
-                  }
-                  config={
-                    config
-                  }
-                />
+                {selectedModel ? (
+                  <AnalyticsChart
+                    modelData={selectedModel}
+                    config={config}
+                  />
+                ) : (
+                  <div className="flex h-[360px] items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground">
+                    Select a model to preview
+                    the chart.
+                  </div>
+                )}
               </div>
             </div>
           </div>
-        </div>
-      )}
+
+          {error && (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+              {error}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() =>
+                setIsBuilderOpen(false)
+              }
+            >
+              Cancel
+            </Button>
+
+            <Button
+              type="button"
+              disabled={
+                isSaving ||
+                !selectedModel ||
+                config.series.length ===
+                  0
+              }
+              onClick={save}
+            >
+              {isSaving ? (
+                "Saving..."
+              ) : editingChartId ? (
+                <>
+                  <Check />
+                  Save changes
+                </>
+              ) : (
+                <>
+                  <Check />
+                  Save chart
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={isManageOpen}
+        onOpenChange={setIsManageOpen}
+      >
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>
+              Hidden charts
+            </DialogTitle>
+
+            <DialogDescription>
+              These charts are still saved. Add
+              them back to your dashboard whenever
+              you need them.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="max-h-[55vh] divide-y overflow-y-auto rounded-lg border">
+            {hiddenCharts.map((chart) => {
+              const model = modelMap.get(
+                chart.modelId,
+              );
+
+              return (
+                <div
+                  key={chart.id}
+                  className="flex items-center justify-between gap-4 p-4"
+                >
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <ChartTypeIcon
+                        type={
+                          chart.config
+                            .chartType
+                        }
+                      />
+
+                      <p className="truncate text-sm font-medium">
+                        {chart.name}
+                      </p>
+                    </div>
+
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {model?.model.name ??
+                        "Model unavailable"}
+                    </p>
+                  </div>
+
+                  <div className="flex shrink-0 gap-1">
+                    <Button
+                      type="button"
+                      size="icon-sm"
+                      variant="ghost"
+                      aria-label="Restore chart"
+                      onClick={() =>
+                        restoreChart(
+                          chart,
+                        )
+                      }
+                    >
+                      <Eye />
+                    </Button>
+
+                    <Button
+                      type="button"
+                      size="icon-sm"
+                      variant="ghost"
+                      className="text-destructive hover:text-destructive"
+                      aria-label="Delete chart"
+                      onClick={() =>
+                        setDeleteTarget(
+                          chart,
+                        )
+                      }
+                    >
+                      <Trash2 />
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() =>
+                setIsManageOpen(false)
+              }
+            >
+              Done
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(hideTarget)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setHideTarget(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              Hide this chart?
+            </DialogTitle>
+
+            <DialogDescription>
+              "{hideTarget?.name}" will disappear
+              from the dashboard but remain saved.
+              You can restore it from Manage hidden.
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() =>
+                setHideTarget(null)
+              }
+            >
+              Cancel
+            </Button>
+
+            <Button
+              type="button"
+              onClick={confirmHide}
+            >
+              <EyeOff />
+              Hide chart
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteTarget(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              Delete this chart?
+            </DialogTitle>
+
+            <DialogDescription>
+              "{deleteTarget?.name}" will be
+              permanently deleted. This cannot be
+              undone.
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() =>
+                setDeleteTarget(null)
+              }
+            >
+              Cancel
+            </Button>
+
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={confirmDelete}
+            >
+              <Trash2 />
+              Delete permanently
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }

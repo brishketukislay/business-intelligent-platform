@@ -198,8 +198,9 @@ export function AnalyticsChart({
       [modelData, config]
     );
 
-  const height =
-    compact ? 260 : 360;
+const height =
+  config.height ??
+  (compact ? 260 : 360);
 
   if (
     series.length === 0
@@ -258,11 +259,7 @@ export function AnalyticsChart({
 
     return (
       <div
-        className={
-          compact
-            ? "h-[260px] w-full"
-            : "h-[360px] w-full"
-        }
+        className="w-full"
       >
         <ResponsiveContainer
           width="100%"

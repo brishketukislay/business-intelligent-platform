@@ -46,7 +46,14 @@ export type AnalyticsSeriesConfig = {
   id: string;
   sourceKey: string;
   scenarioId: string;
+
+  /**
+   * Optional custom label.
+   *
+   * An empty string means "use the source/scenario name".
+   */
   label: string;
+
   color: string;
 };
 
@@ -58,6 +65,21 @@ export type AnalyticsChartConfig = {
   showLegend: boolean;
   showGrid: boolean;
   showValues: boolean;
+
+  /**
+   * Dashboard layout.
+   *
+   * Existing charts that do not have these values are
+   * normalised to the defaults by the analytics service.
+   */
+  width?: number;
+  height?: number;
+
+  /**
+   * Whether this chart is currently shown on the dashboard.
+   * Saved charts are visible by default.
+   */
+  isVisible?: boolean;
 };
 
 export type AnalyticsChartRecord = {
@@ -74,6 +96,7 @@ export type AnalyticsModelData = {
     id: string;
     name: string;
   };
+
   periods: AnalyticsPeriod[];
   sources: AnalyticsSource[];
   scenarios: AnalyticsScenario[];
@@ -83,7 +106,10 @@ export type AnalyticsModelData = {
    *
    * values[sourceKey][periodIndex]
    */
-  values: Record<string, Array<number | null>>;
+  values: Record<
+    string,
+    Array<number | null>
+  >;
 
   /**
    * Scenario values.

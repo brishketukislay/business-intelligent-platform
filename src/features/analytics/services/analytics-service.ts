@@ -1005,16 +1005,18 @@ export async function getAnalyticsModelData(
 }
 
 export async function getAnalyticsCharts(
-  userId: string
+  userId: string,
 ): Promise<AnalyticsChartRecord[]> {
   const charts =
     await prisma.analyticsChart.findMany({
       where: {
         createdBy: userId,
       },
+
       orderBy: {
         createdAt: "asc",
       },
+
       select: {
         id: true,
         modelId: true,
@@ -1025,34 +1027,100 @@ export async function getAnalyticsCharts(
       },
     });
 
-  return charts.flatMap(
-    chart => {
-      try {
-        const config =
-          JSON.parse(
-            chart.config
-          ) as AnalyticsChartConfig;
+  return charts.flatMap((chart) => {
+    try {
+      const parsed =
+        JSON.parse(
+          chart.config,
+        ) as Partial<AnalyticsChartConfig>;
 
-        return [
-          {
-            id:
-              chart.id,
-            modelId:
-              chart.modelId,
-            name:
-              chart.name,
-            config,
-            createdAt:
-              chart.createdAt.toISOString(),
-            updatedAt:
-              chart.updatedAt.toISOString(),
-          },
-        ];
-      } catch {
-        return [];
-      }
+      const config: AnalyticsChartConfig = {
+        title:
+          parsed.title ??
+          chart.name,
+
+        chartType:
+          parsed.chartType ??
+          "line",
+
+        displayMode:
+          parsed.displayMode ??
+          "periods",
+
+        series:
+          Array.isArray(
+            parsed.series,
+          )
+            ? parsed.series.map(
+                (series, index) => ({
+                  id:
+                    series.id ??
+                    `${chart.id}-${index}`,
+
+                  sourceKey:
+                    series.sourceKey,
+
+                  scenarioId:
+                    series.scenarioId ??
+                    "base",
+
+                  label:
+                    typeof series.label ===
+                    "string"
+                      ? series.label
+                      : "",
+
+                  color:
+                    series.color ??
+                    "#2563eb",
+                }),
+              )
+            : [],
+
+        showLegend:
+          parsed.showLegend ??
+          true,
+
+        showGrid:
+          parsed.showGrid ??
+          true,
+
+        showValues:
+          parsed.showValues ??
+          false,
+
+        width:
+          parsed.width ??
+          560,
+
+        height:
+          parsed.height ??
+          360,
+
+        /**
+         * Existing charts are visible by default.
+         */
+        isVisible:
+          parsed.isVisible ??
+          true,
+      };
+
+      return [
+        {
+          id: chart.id,
+          modelId: chart.modelId,
+          name: chart.name,
+          config,
+          createdAt:
+            chart.createdAt.toISOString(),
+          updatedAt:
+            chart.updatedAt.toISOString(),
+        },
+      ];
+    } catch {
+      return [];
     }
-  );
+  });
 }
 
 export async function getAnalyticsDashboardData(
