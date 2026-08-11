@@ -1809,6 +1809,161 @@ export default function AnalyticsWorkspace({
     </div>
   </DialogContent>
 </Dialog>
+{/* Delete confirmation */}
+<Dialog
+  open={Boolean(deleteTarget)}
+  onOpenChange={(open) => {
+    if (!open) {
+      setDeleteTarget(null);
+    }
+  }}
+>
+  <DialogContent className="max-w-md">
+    <DialogHeader>
+      <DialogTitle>Delete analytics chart?</DialogTitle>
+      <DialogDescription>
+        This will permanently remove{" "}
+        <span className="font-medium text-foreground">
+          {deleteTarget?.name ?? "this chart"}
+        </span>{" "}
+        from your dashboard.
+      </DialogDescription>
+    </DialogHeader>
+
+    <DialogFooter>
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => setDeleteTarget(null)}
+      >
+        Cancel
+      </Button>
+
+      <Button
+        type="button"
+        variant="destructive"
+        onClick={confirmDelete}
+      >
+        <Trash2 />
+        Delete chart
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
+
+{/* Hide confirmation */}
+<Dialog
+  open={Boolean(hideTarget)}
+  onOpenChange={(open) => {
+    if (!open) {
+      setHideTarget(null);
+    }
+  }}
+>
+  <DialogContent className="max-w-md">
+    <DialogHeader>
+      <DialogTitle>Hide analytics chart?</DialogTitle>
+      <DialogDescription>
+        <span className="font-medium text-foreground">
+          {hideTarget?.name ?? "This chart"}
+        </span>{" "}
+        will be removed from the dashboard, but you can restore it
+        later from Manage hidden.
+      </DialogDescription>
+    </DialogHeader>
+
+    <DialogFooter>
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => setHideTarget(null)}
+      >
+        Cancel
+      </Button>
+
+      <Button
+        type="button"
+        onClick={confirmHide}
+      >
+        <EyeOff />
+        Hide chart
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
+{/* Manage hidden charts */}
+<Dialog
+  open={isManageOpen}
+  onOpenChange={setIsManageOpen}
+>
+  <DialogContent className="max-w-lg">
+    <DialogHeader>
+      <DialogTitle>Hidden analytics</DialogTitle>
+      <DialogDescription>
+        Charts hidden from your dashboard can be restored here.
+      </DialogDescription>
+    </DialogHeader>
+
+    <div className="max-h-[50vh] overflow-y-auto px-6">
+      {hiddenCharts.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-border p-8 text-center">
+          <Eye className="mx-auto size-6 text-muted-foreground" />
+
+          <p className="mt-3 text-sm font-medium">
+            No hidden charts
+          </p>
+
+          <p className="mt-1 text-xs text-muted-foreground">
+            Hidden charts will appear here.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {hiddenCharts.map((chart) => {
+            const model = modelMap.get(chart.modelId);
+
+            return (
+              <div
+                key={chart.id}
+                className="flex items-center justify-between gap-4 rounded-xl border border-border bg-background p-4"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">
+                    {chart.name}
+                  </p>
+
+                  <p className="mt-1 truncate text-xs text-muted-foreground">
+                    {model?.model.name ?? "Unknown model"}
+                  </p>
+                </div>
+
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => restoreChart(chart)}
+                >
+                  <Eye />
+                  Show
+                </Button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+
+    <DialogFooter>
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => setIsManageOpen(false)}
+      >
+        Done
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
     </section>
   );
 }
