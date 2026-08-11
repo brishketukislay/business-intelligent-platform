@@ -1,252 +1,254 @@
 "use server";
 
 import {
-revalidatePath,
+  revalidatePath,
 } from "next/cache";
 
 import {
-requireCurrentUser,
+  requireCurrentUser,
 } from "@/lib/current-user";
 
 import {
-metricDefinitionSchema,
-type MetricDefinitionInput,
+  metricDefinitionSchema,
+  type MetricDefinitionInput,
 } from "../schemas/metric-schema";
 
 import {
-createMetricDefinition,
-updateMetricDefinition,
-deactivateMetricDefinition,
+  createMetricDefinition,
+  updateMetricDefinition,
+  deactivateMetricDefinition,
+  getMetricFormulaContext,
 } from "../services/metric-service";
 
 function formDataToMetricDefinition(
-formData: FormData
+  formData: FormData
 ): MetricDefinitionInput {
+  return {
+    modelId: String(
+      formData.get("modelId") ?? ""
+    ).trim(),
 
-return {
+    name: String(
+      formData.get("name") ?? ""
+    ).trim(),
 
-modelId:
-  String(
-    formData.get("modelId") ?? ""
-  ),
+    key: String(
+      formData.get("key") ?? ""
+    ).trim(),
 
-name:
-  String(
-    formData.get("name") ?? ""
-  ).trim(),
+    type: String(
+      formData.get("type") ?? "Number"
+    ) as MetricDefinitionInput["type"],
 
-key:
-  String(
-    formData.get("key") ?? ""
-  ).trim(),
+    unit:
+      String(
+        formData.get("unit") ?? ""
+      ).trim() || undefined,
 
-type:
-  String(
-    formData.get("type") ?? "Number"
-  ) as MetricDefinitionInput["type"],
+    category:
+      String(
+        formData.get("category") ?? ""
+      ).trim() || undefined,
 
-unit:
-  String(
-    formData.get("unit") ?? ""
-  ).trim() || undefined,
+    formula: String(
+      formData.get("formula") ?? ""
+    ).trim(),
+  };
+}
 
-category:
-  String(
-    formData.get("category") ?? ""
-  ).trim() || undefined,
+function errorMessage(
+  error: unknown,
+  fallback: string
+) {
+  return error instanceof Error
+    ? error.message
+    : fallback;
+}
 
-formula:
-  String(
-    formData.get("formula") ?? ""
-  ).trim(),
+export async function getMetricFormulaContextAction(
+  modelId: string
+) {
+  const user =
+    await requireCurrentUser();
 
+  try {
+    return {
+      success: true,
+      data:
+        await getMetricFormulaContext(
+          modelId,
+          user.id
+        ),
+    };
+  } catch (error) {
+    console.error(
+      "Failed to load formula context:",
+      error
+    );
 
-};
-
+    return {
+      success: false,
+      error:
+        errorMessage(
+          error,
+          "Unable to load formula references."
+        ),
+    };
+  }
 }
 
 export async function createMetricAction(
-formData: FormData
+  formData: FormData
 ) {
+  const user =
+    await requireCurrentUser();
 
-const user =
-await requireCurrentUser();
+  const result =
+    metricDefinitionSchema.safeParse(
+      formDataToMetricDefinition(
+        formData
+      )
+    );
 
-const result =
-metricDefinitionSchema.safeParse(
-formDataToMetricDefinition(
-formData
-)
-);
+  if (!result.success) {
+    return {
+      success: false,
+      error:
+        result.error.flatten()
+          .fieldErrors,
+    };
+  }
 
-if (!result.success) {
+  try {
+    const metric =
+      await createMetricDefinition(
+        result.data,
+        user.id
+      );
 
-return {
+    revalidatePath(
+      `/models/${metric.modelId}/metrics`
+    );
 
-  success: false,
+    revalidatePath(
+      `/models/${metric.modelId}/edit`
+    );
 
-  error:
-    result.error.flatten(),
+    return {
+      success: true,
+      metricId: metric.id,
+      key: metric.key,
+    };
+  } catch (error) {
+    console.error(
+      "Failed to create metric:",
+      error
+    );
 
-};
-
-
-}
-
-try {
-
-await createMetricDefinition(
-  result.data,
-  user.id
-);
-
-
-revalidatePath(
-  `/models/${result.data.modelId}/metrics`
-);
-
-
-return {
-  success: true,
-};
-
-
-} catch (error) {
-
-console.error(
-  "Failed to create metric definition:",
-  error
-);
-
-
-return {
-
-  success: false,
-
-  error:
-    "Unable to create metric definition.",
-
-};
-
-
-}
-
+    return {
+      success: false,
+      error:
+        errorMessage(
+          error,
+          "Unable to create metric definition."
+        ),
+    };
+  }
 }
 
 export async function updateMetricAction(
-id: string,
-formData: FormData
+  id: string,
+  formData: FormData
 ) {
+  const user =
+    await requireCurrentUser();
 
-const user =
-await requireCurrentUser();
+  const result =
+    metricDefinitionSchema.safeParse(
+      formDataToMetricDefinition(
+        formData
+      )
+    );
 
-const result =
-metricDefinitionSchema.safeParse(
-formDataToMetricDefinition(
-formData
-)
-);
+  if (!result.success) {
+    return {
+      success: false,
+      error:
+        result.error.flatten()
+          .fieldErrors,
+    };
+  }
 
-if (!result.success) {
+  try {
+    const metric =
+      await updateMetricDefinition(
+        id,
+        result.data,
+        user.id
+      );
 
-return {
+    revalidatePath(
+      `/models/${metric.modelId}/metrics`
+    );
 
-  success: false,
+    revalidatePath(
+      `/models/${metric.modelId}/edit`
+    );
 
-  error:
-    result.error.flatten(),
+    return {
+      success: true,
+      key: metric.key,
+    };
+  } catch (error) {
+    console.error(
+      "Failed to update metric:",
+      error
+    );
 
-};
-
-
-}
-
-try {
-
-await updateMetricDefinition(
-  id,
-  result.data,
-  user.id
-);
-
-
-revalidatePath(
-  `/models/${result.data.modelId}/metrics`
-);
-
-
-return {
-  success: true,
-};
-
-
-} catch (error) {
-
-console.error(
-  "Failed to update metric definition:",
-  error
-);
-
-
-return {
-
-  success: false,
-
-  error:
-    "Unable to update metric definition.",
-
-};
-
-
-}
-
+    return {
+      success: false,
+      error:
+        errorMessage(
+          error,
+          "Unable to update metric definition."
+        ),
+    };
+  }
 }
 
 export async function deactivateMetricAction(
-id: string,
-modelId: string
+  id: string,
+  modelId: string
 ) {
+  const user =
+    await requireCurrentUser();
 
-const user =
-await requireCurrentUser();
+  try {
+    await deactivateMetricDefinition(
+      id,
+      user.id
+    );
 
-try {
+    revalidatePath(
+      `/models/${modelId}/metrics`
+    );
 
-await deactivateMetricDefinition(
-  id,
-  user.id
-);
+    return {
+      success: true,
+    };
+  } catch (error) {
+    console.error(
+      "Failed to deactivate metric:",
+      error
+    );
 
-
-revalidatePath(
-  `/models/${modelId}/metrics`
-);
-
-
-return {
-  success: true,
-};
-
-
-} catch (error) {
-
-console.error(
-  "Failed to deactivate metric definition:",
-  error
-);
-
-
-return {
-
-  success: false,
-
-  error:
-    "Unable to deactivate metric definition.",
-
-};
-
-
-}
-
+    return {
+      success: false,
+      error:
+        errorMessage(
+          error,
+          "Unable to deactivate metric definition."
+        ),
+    };
+  }
 }
