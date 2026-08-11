@@ -270,13 +270,24 @@ export async function updateAnalyticsChartAction(
       input
     );
 
-  if (!parsed.success) {
-    return {
-      success: false,
-      error:
-        "Invalid analytics configuration.",
-    };
-  }
+if (!parsed.success) {
+  console.error(
+    "Invalid analytics configuration:",
+    parsed.error.flatten()
+  );
+
+  return {
+    success: false,
+    error: parsed.error.issues
+      .map(issue => {
+        const path = issue.path.join(".");
+        return path
+          ? `${path}: ${issue.message}`
+          : issue.message;
+      })
+      .join("; "),
+  };
+}
 
   try {
     const chart =

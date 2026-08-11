@@ -16,12 +16,12 @@ model User {
   status       String   @default("PENDING")
   createdAt    DateTime @default(now())
 
-  resetTokens    PasswordResetToken[]
-  businessModels BusinessModel[]
-  workingValues  WorkingValue[]
-  savedModels    SavedModel[]
-  scenarios      Scenario[]
-  modelAccess    BusinessModelAccess[]
+  resetTokens     PasswordResetToken[]
+  businessModels  BusinessModel[]
+  workingValues   WorkingValue[]
+  savedModels     SavedModel[]
+  scenarios       Scenario[]
+  modelAccess     BusinessModelAccess[]
   analyticsCharts AnalyticsChart[]
 }
 
@@ -49,14 +49,14 @@ model BusinessModel {
 
   creator User @relation(fields: [createdBy], references: [id])
 
-  settings    BusinessModelSettings?
-  inputs      InputDefinition[]
-  metrics     MetricDefinition[]
-  periods     ModelPeriod[]
-  savedValues SavedModelValue[]
-  savedModels SavedModel[]
-  scenarios   Scenario[]
-  access      BusinessModelAccess[]
+  settings        BusinessModelSettings?
+  inputs          InputDefinition[]
+  metrics         MetricDefinition[]
+  periods         ModelPeriod[]
+  savedValues     SavedModelValue[]
+  savedModels     SavedModel[]
+  scenarios       Scenario[]
+  access          BusinessModelAccess[]
   analyticsCharts AnalyticsChart[]
 }
 
@@ -242,6 +242,7 @@ model BusinessModelAccess {
   @@index([modelId])
   @@index([userId])
 }
+
 model AnalyticsChart {
   id        String   @id @default(cuid())
   modelId   String

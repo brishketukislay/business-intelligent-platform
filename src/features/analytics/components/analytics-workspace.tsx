@@ -85,22 +85,20 @@ type Props =
   AnalyticsDashboardData;
 
 function makeSeries(
+  modelData: AnalyticsModelData,
   sourceKey: string,
   index: number
 ): AnalyticsSeriesConfig {
+  const source = modelData.sources.find(
+    item => item.sourceKey === sourceKey
+  );
+
   return {
-    id:
-      `${Date.now()}-${index}`,
+    id: `${Date.now()}-${index}`,
     sourceKey,
-    scenarioId:
-      "base",
-    label:
-      "",
-    color:
-      COLORS[
-        index %
-          COLORS.length
-      ],
+    scenarioId: "base",
+    label: source?.name ?? "Series",
+    color: COLORS[index % COLORS.length],
   };
 }
 
@@ -154,10 +152,7 @@ function emptyConfigForModel(
     series:
       firstSource
         ? [
-            makeSeries(
-              firstSource.sourceKey,
-              0
-            ),
+            makeSeries(modelData, firstSource.sourceKey, 0),
           ]
         : [],
   };
@@ -389,10 +384,7 @@ export default function AnalyticsWorkspace({
         ...current,
         series: [
           ...current.series,
-          makeSeries(
-            source.sourceKey,
-            current.series.length
-          ),
+          makeSeries(selectedModel, source.sourceKey, current.series.length),
         ],
       })
     );
