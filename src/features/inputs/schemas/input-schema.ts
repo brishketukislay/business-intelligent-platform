@@ -3,7 +3,12 @@ import { z } from "zod";
 export const INPUT_SCOPES = [
   "MODEL",
   "PERIOD",
+  "ITEM",
+  "ITEM_PERIOD",
 ] as const;
+
+export type InputScope =
+  (typeof INPUT_SCOPES)[number];
 
 export const INPUT_TYPES = [
   "Number",
@@ -13,59 +18,32 @@ export const INPUT_TYPES = [
 ] as const;
 
 export const inputDefinitionSchema = z.object({
-  modelId: z
-    .string()
-    .trim()
-    .min(1, "Model is required."),
+  modelId: z.string().min(1),
 
-  name: z
-    .string()
+  name: z.string()
     .trim()
     .min(1, "Input name is required.")
-    .max(
-      100,
-      "Input name must be 100 characters or less."
-    ),
+    .max(100),
 
-  /*
-   * Users do not need to provide this.
-   * The server generates it when empty.
-   */
-  key: z
-    .string()
+  key: z.string()
     .trim()
-    .max(
-      100,
-      "Input key must be 100 characters or less."
-    )
+    .min(1, "Input key is required.")
     .regex(
-      /^[a-z0-9_]*$/,
+      /^[a-z0-9_]+$/,
       "Key can only contain lowercase letters, numbers and underscores."
-    )
-    .optional()
-    .or(z.literal("")),
+    ),
 
   type: z.enum(INPUT_TYPES),
 
-  unit: z
-    .string()
+  unit: z.string()
     .trim()
-    .max(
-      50,
-      "Unit must be 50 characters or less."
-    )
-    .optional()
-    .or(z.literal("")),
+    .max(50)
+    .optional(),
 
-  category: z
-    .string()
+  category: z.string()
     .trim()
-    .max(
-      100,
-      "Category must be 100 characters or less."
-    )
-    .optional()
-    .or(z.literal("")),
+    .max(100)
+    .optional(),
 
   scope: z.enum(INPUT_SCOPES),
 });
