@@ -184,12 +184,12 @@ id: true,
 const validSources =
 new Set([
 ...inputs.map(
-input =>
+(input:any) =>
 `input:${input.id}`
 ),
 
   ...metrics.map(
-    metric =>
+    (metric:any) =>
       `metric:${metric.id}`
   ),
 ]);

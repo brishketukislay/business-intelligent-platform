@@ -187,7 +187,7 @@ export default async function SavedModelsPage({
 
         <div className="space-y-4">
 
-          {savedModels.map((savedModel) => (
+          {savedModels.map((savedModel:any) => (
 
             <Link
               key={savedModel.id}
@@ -239,7 +239,7 @@ export default async function SavedModelsPage({
 
                 {savedModel.values
                   .slice(0, 6)
-                  .map((savedValue) => (
+                  .map((savedValue:any) => (
 
                     <div
                       key={savedValue.id}

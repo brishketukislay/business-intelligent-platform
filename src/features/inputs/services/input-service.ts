@@ -64,8 +64,8 @@ async function getAvailableDefinitionKeys(
   ]);
 
   return [
-    ...inputs.map((item) => item.key),
-    ...metrics.map((item) => item.key),
+    ...inputs.map((item:any) => item.key),
+    ...metrics.map((item:any) => item.key),
   ];
 }
 

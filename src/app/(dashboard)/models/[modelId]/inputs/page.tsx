@@ -104,7 +104,7 @@ export default async function ModelInputsPage({
   const workingValueMap =
     new Map(
       workingValues.map(
-        workingValue => [
+        (workingValue:any) => [
           workingValue.inputId,
           workingValue.value,
         ]
@@ -114,7 +114,7 @@ export default async function ModelInputsPage({
 
   const workingInputs =
     inputs.map(
-      input => ({
+      (input:any) => ({
 
         id: input.id,
 
