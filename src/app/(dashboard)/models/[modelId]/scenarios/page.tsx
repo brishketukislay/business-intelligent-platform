@@ -192,9 +192,10 @@ export default async function ModelScenariosPage({
 
 
         <ScenarioList
-          modelId={model.id}
-          scenarios={scenarios}
-        />
+  modelId={model.id}
+  scenarios={scenarios}
+  canEdit={canEdit}
+/>
 
 
         <ScenarioComparison
