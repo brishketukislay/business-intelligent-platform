@@ -218,7 +218,7 @@ export async function generateModelPeriodsAction(
 
 
     await prisma.$transaction(
-      async (tx) => {
+      async (tx:any) => {
 
         await tx.modelPeriod.createMany({
 

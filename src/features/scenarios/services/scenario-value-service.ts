@@ -127,7 +127,7 @@ export async function getScenarioInputs(
 
 
   return inputs.map(
-    (input) => ({
+    (input:any) => ({
 
       id:
         input.id,

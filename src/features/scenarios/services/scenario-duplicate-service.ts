@@ -30,7 +30,7 @@ async function getCopyName(
 
   const names = new Set(
     existing.map(
-      (scenario) =>
+      (scenario:any) =>
         scenario.name
     )
   );
@@ -79,7 +79,7 @@ export async function duplicateScenarioRecord({
     );
 
   return prisma.$transaction(
-    async (tx) => {
+    async (tx:any) => {
       const copy =
         await tx.scenario.create({
           data: {
@@ -104,7 +104,7 @@ export async function duplicateScenarioRecord({
         await tx.scenarioValue.createMany({
           data:
             source.values.map(
-              (value) => ({
+              (value:any) => ({
                 scenarioId:
                   copy.id,
 

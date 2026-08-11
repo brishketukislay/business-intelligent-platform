@@ -365,7 +365,7 @@ export async function getModelShares(
 
 
   return shares.map(
-    (share) => ({
+    (share:any) => ({
 
       id:
         share.id,

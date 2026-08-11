@@ -152,7 +152,7 @@ export async function saveWorkingValues(
 
           create:
             workingValues.map(
-              (workingValue) => ({
+              (workingValue:any) => ({
 
                 modelId,
 

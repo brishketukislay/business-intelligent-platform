@@ -198,7 +198,7 @@ export default async function ModelEditPage({
             modelId={model.id}
             periods={
               periods.map(
-                (period) => ({
+                (period:any) => ({
 
                   id:
                     period.id,

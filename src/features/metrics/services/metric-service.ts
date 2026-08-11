@@ -53,17 +53,17 @@ async function getDefinitionKeys(
 
   return {
     inputKeys: inputs.map(
-      (item) => item.key
+      (item:any) => item.key
     ),
     metricKeys: metrics.map(
-      (item) => item.key
+      (item:any) => item.key
     ),
     allKeys: [
       ...inputs.map(
-        (item) => item.key
+        (item:any) => item.key
       ),
       ...metrics.map(
-        (item) => item.key
+        (item:any) => item.key
       ),
     ],
   };
@@ -158,7 +158,7 @@ async function validateMetricFormula(
         ).filter(
           (reference) =>
             metrics.some(
-              (candidate) =>
+              (candidate:any) =>
                 candidate.key ===
                 reference
             )
@@ -177,7 +177,7 @@ async function validateMetricFormula(
     validation.references.filter(
       (reference) =>
         metrics.some(
-          (metric) =>
+          (metric:any) =>
             metric.key ===
             reference
         )

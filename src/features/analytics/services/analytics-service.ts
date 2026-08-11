@@ -839,7 +839,7 @@ export async function getAnalyticsModelData(
           where: {
             scenarioId: {
               in: scenarios.map(
-                scenario =>
+                (scenario:any) =>
                   scenario.id
               ),
             },
@@ -909,12 +909,12 @@ export async function getAnalyticsModelData(
     AnalyticsSource[] = [
       ...inputs
         .filter(
-          input =>
+          (input:any) =>
             input.type !==
             "Text"
         )
         .map(
-          input => ({
+          (input:any) => ({
             sourceKey:
               sourceKey(
                 "input",
@@ -938,7 +938,7 @@ export async function getAnalyticsModelData(
         ),
 
       ...metrics.map(
-        metric => ({
+        (metric:any) => ({
           sourceKey:
             sourceKey(
               "metric",
@@ -965,7 +965,7 @@ export async function getAnalyticsModelData(
   const analyticsPeriods:
     AnalyticsPeriod[] =
     periods.map(
-      period => ({
+      (period:any) => ({
         id:
           period.id,
         name:
@@ -978,7 +978,7 @@ export async function getAnalyticsModelData(
   const analyticsScenarios:
     AnalyticsScenario[] =
     scenarios.map(
-      scenario => ({
+      (scenario:any) => ({
         id:
           scenario.id,
         name:
@@ -1027,7 +1027,7 @@ export async function getAnalyticsCharts(
       },
     });
 
-  return charts.flatMap((chart) => {
+  return charts.flatMap((chart:any) => {
     try {
       const parsed =
         JSON.parse(
@@ -1138,7 +1138,7 @@ export async function getAnalyticsDashboardData(
     await Promise.all([
       Promise.all(
         models.map(
-          model =>
+          (model:any) =>
             getAnalyticsModelData(
               model.id,
               userId

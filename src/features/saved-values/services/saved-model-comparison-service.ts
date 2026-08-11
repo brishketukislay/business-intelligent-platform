@@ -178,7 +178,7 @@ export async function compareSavedModels(
 
   const snapshotA =
     savedModels.find(
-      (snapshot) =>
+      (snapshot:any) =>
         snapshot.id ===
         savedModelIdA
     );
@@ -186,7 +186,7 @@ export async function compareSavedModels(
 
   const snapshotB =
     savedModels.find(
-      (snapshot) =>
+      (snapshot:any) =>
         snapshot.id ===
         savedModelIdB
     );
@@ -210,7 +210,7 @@ export async function compareSavedModels(
   const valuesByKeyA =
     new Map(
       snapshotA.values.map(
-        (savedValue) => [
+        (savedValue:any) => [
 
           savedValue.input.key,
 
@@ -224,7 +224,7 @@ export async function compareSavedModels(
   const valuesByKeyB =
     new Map(
       snapshotB.values.map(
-        (savedValue) => [
+        (savedValue:any) => [
 
           savedValue.input.key,
 

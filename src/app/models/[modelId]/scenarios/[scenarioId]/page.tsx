@@ -147,7 +147,7 @@ export default async function ScenarioDetailPage({
   const scenarioValueByInputId =
     new Map(
       scenario.values.map(
-        (scenarioValue) => [
+        (scenarioValue:any) => [
           scenarioValue.inputId,
           scenarioValue.value,
         ]
@@ -157,7 +157,7 @@ export default async function ScenarioDetailPage({
 
   const scenarioInputs =
     inputs.map(
-      (input) => ({
+      (input:any) => ({
 
         id: input.id,
 

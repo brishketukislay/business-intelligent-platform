@@ -575,7 +575,7 @@ export async function calculateMetrics(
 
   const inputById =
     new Map(
-      inputs.map(input => [
+      inputs.map((input:any) => [
         input.id,
         input,
       ])

@@ -219,7 +219,7 @@ export async function createScenario(
 
       data:
         inputs.map(
-          (input) => ({
+          (input:any) => ({
 
             scenarioId:
               scenario.id,
