@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 
 import {
   Dialog,
@@ -91,15 +92,16 @@ function makeSeries(
   sourceKey: string,
   index: number,
 ): AnalyticsSeriesConfig {
-  const source = modelData.sources.find(
-    (item) => item.sourceKey === sourceKey,
-  );
-
   return {
     id: `${Date.now()}-${index}`,
     sourceKey,
     scenarioId: "base",
-    label: source?.name ?? "",
+
+    // Deliberately empty.
+    // The UI says the label is optional, so the payload should
+    // remain empty unless the user explicitly enters one.
+    label: "",
+
     color: COLORS[index % COLORS.length],
   };
 }
@@ -152,35 +154,24 @@ function ChartTypeIcon({
   type: AnalyticsChartConfig["chartType"];
 }) {
   if (type === "line") {
-    return (
-      <LineChartIcon className="size-4 text-primary" />
-    );
+    return <LineChartIcon className="size-4" />;
   }
 
   if (type === "bar") {
-    return (
-      <BarChart3 className="size-4 text-primary" />
-    );
+    return <BarChart3 className="size-4" />;
   }
 
   if (type === "pie") {
-    return (
-      <PieChartIcon className="size-4 text-primary" />
-    );
+    return <PieChartIcon className="size-4" />;
   }
 
-  return (
-    <ScatterChartIcon className="size-4 text-primary" />
-  );
+  return <ScatterChartIcon className="size-4" />;
 }
 
 function ResizeHandle({
   onResize,
 }: {
-  onResize: (
-    width: number,
-    height: number,
-  ) => void;
+  onResize: (width: number, height: number) => void;
 }) {
   const resizing = useRef(false);
 
@@ -191,16 +182,13 @@ function ResizeHandle({
     height: 0,
   });
 
-  function handlePointerDown(
-    event: PointerEvent<HTMLButtonElement>,
-  ) {
+  function handlePointerDown(event: PointerEvent<HTMLButtonElement>) {
     event.preventDefault();
     event.stopPropagation();
 
     resizing.current = true;
 
-    const element =
-      event.currentTarget.parentElement;
+    const element = event.currentTarget.parentElement;
 
     start.current = {
       x: event.clientX,
@@ -209,14 +197,10 @@ function ResizeHandle({
       height: element?.getBoundingClientRect().height ?? 0,
     };
 
-    event.currentTarget.setPointerCapture(
-      event.pointerId,
-    );
+    event.currentTarget.setPointerCapture(event.pointerId);
   }
 
-  function handlePointerMove(
-    event: PointerEvent<HTMLButtonElement>,
-  ) {
+  function handlePointerMove(event: PointerEvent<HTMLButtonElement>) {
     if (!resizing.current) {
       return;
     }
@@ -247,9 +231,7 @@ function ResizeHandle({
     );
   }
 
-  function handlePointerUp(
-    event: PointerEvent<HTMLButtonElement>,
-  ) {
+  function handlePointerUp(event: PointerEvent<HTMLButtonElement>) {
     resizing.current = false;
 
     try {
@@ -265,16 +247,25 @@ function ResizeHandle({
     <button
       type="button"
       aria-label="Resize chart"
-      className="absolute bottom-0 right-0 z-10 flex size-7 cursor-nwse-resize items-end justify-end rounded-tl-md bg-background/90 p-1.5 text-muted-foreground shadow-sm"
+      className="absolute bottom-0 right-0 z-10 flex size-7 cursor-nwse-resize items-end justify-end rounded-tl-md bg-background p-1.5 text-muted-foreground shadow-sm"
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
       onClick={(event) => event.stopPropagation()}
     >
-      <span className="flex h-4 w-4 items-end justify-end">
-        <span className="block h-1.5 w-1.5 rounded-sm border-b-2 border-r-2 border-muted-foreground" />
-      </span>
+      <svg
+        viewBox="0 0 12 12"
+        className="size-4"
+        aria-hidden="true"
+      >
+        <path
+          d="M2 10L10 2M6 10L10 6"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        />
+      </svg>
     </button>
   );
 }
@@ -289,15 +280,9 @@ function ChartCard({
 }: {
   chart: AnalyticsChartRecord;
   modelData: AnalyticsModelData;
-  onEdit: (
-    chart: AnalyticsChartRecord,
-  ) => void;
-  onHide: (
-    chart: AnalyticsChartRecord,
-  ) => void;
-  onDelete: (
-    chart: AnalyticsChartRecord,
-  ) => void;
+  onEdit: (chart: AnalyticsChartRecord) => void;
+  onHide: (chart: AnalyticsChartRecord) => void;
+  onDelete: (chart: AnalyticsChartRecord) => void;
   onResize: (
     chart: AnalyticsChartRecord,
     width: number,
@@ -312,13 +297,13 @@ function ChartCard({
 
   return (
     <article
-      className="relative min-w-[320px] max-w-full overflow-hidden rounded-xl border bg-background shadow-sm"
+      className="relative min-w-[320px] max-w-full overflow-hidden rounded-xl border border-border bg-background shadow-sm"
       style={{
         width,
         height,
       }}
     >
-      <div className="flex h-12 items-center justify-between border-b px-3">
+      <div className="flex h-12 shrink-0 items-center justify-between border-b border-border px-3">
         <div className="flex min-w-0 items-center gap-2">
           <ChartTypeIcon
             type={chart.config.chartType}
@@ -529,7 +514,7 @@ export default function AnalyticsWorkspace({
 
     setEditingChartId(null);
     setConfig(next);
-    setChartName(next.title);
+    setChartName("");
     setError(null);
     setIsBuilderOpen(true);
   }
@@ -550,7 +535,7 @@ export default function AnalyticsWorkspace({
         emptyConfigForModel(model);
 
       setConfig(next);
-      setChartName(next.title);
+      setChartName("");
     }
   }
 
@@ -713,6 +698,8 @@ export default function AnalyticsWorkspace({
         series: config.series.map(
           (series) => ({
             ...series,
+
+            // Optional means an empty string is valid.
             label: series.label.trim(),
           }),
         ),
@@ -880,8 +867,8 @@ export default function AnalyticsWorkspace({
 
   if (models.length === 0) {
     return (
-      <section className="rounded-xl border bg-background p-6">
-        <div className="flex size-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+      <section className="rounded-xl border border-dashed bg-background p-10 text-center">
+        <div className="mx-auto flex size-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
           <BarChart3 className="size-6" />
         </div>
 
@@ -898,10 +885,11 @@ export default function AnalyticsWorkspace({
   }
 
   return (
-    <section className="space-y-6">
+    <section className="space-y-5">
+      {/* Dashboard header */}
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div>
-          <h2 className="text-xl font-semibold">
+          <h2 className="text-xl font-semibold tracking-tight">
             Analytics
           </h2>
 
@@ -939,7 +927,8 @@ export default function AnalyticsWorkspace({
         </div>
       </div>
 
-      {error && (
+      {/* Dashboard error */}
+      {error && !isBuilderOpen && (
         <div className="flex items-start justify-between gap-4 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
           <span>{error}</span>
 
@@ -955,6 +944,7 @@ export default function AnalyticsWorkspace({
         </div>
       )}
 
+      {/* Charts */}
       {visibleCharts.length === 0 ? (
         <div className="rounded-xl border border-dashed bg-background p-10 text-center">
           <div className="mx-auto flex size-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
@@ -1022,8 +1012,7 @@ export default function AnalyticsWorkspace({
         </div>
       )}
 
-{/* Chart configuration */}
-<Dialog
+     <Dialog
   open={isBuilderOpen}
   onOpenChange={(open) => {
     setIsBuilderOpen(open);
@@ -1034,111 +1023,184 @@ export default function AnalyticsWorkspace({
     }
   }}
 >
-  <DialogContent className="flex max-h-[92vh] max-w-[1180px] flex-col gap-0 overflow-hidden p-0">
-    {/* Header */}
-    <DialogHeader className="shrink-0 border-b px-6 py-5">
-      <DialogTitle>
-        {editingChartId
-          ? "Edit analytics"
-          : "Add analytics"}
-      </DialogTitle>
+  <DialogContent
+    showCloseButton={false}
+    className={cn(
+      "flex",
+      "h-[min(900px,92vh)]",
+      "w-[min(1400px,96vw)]",
+      "max-w-none",
+      "flex-col",
+      "gap-0",
+      "overflow-hidden",
+      "rounded-2xl",
+      "bg-background",
+      "p-0",
+    )}
+  >
+    {/* ========================================================= */}
+    {/* HEADER                                                    */}
+    {/* ========================================================= */}
 
-      <DialogDescription>
-        Choose a model, select the values you want to
-        analyse, then customise the chart.
-      </DialogDescription>
-    </DialogHeader>
+    <div className="relative flex shrink-0 items-center justify-between border-b border-border bg-background px-6 py-4">
+      <div className="min-w-0 pr-12">
+        <DialogTitle className="text-lg font-semibold tracking-tight">
+          {editingChartId
+            ? "Edit analytics"
+            : "Create analytics"}
+        </DialogTitle>
 
-    {/* Body */}
-    <div className="grid min-h-0 flex-1 lg:grid-cols-[minmax(0,1fr)_420px]">
-      {/* Left — Configuration */}
-      <div className="min-h-0 overflow-y-auto px-6 py-5">
-        <div className="space-y-5">
-          {/* Model + Name */}
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="analytics-model">
-                Model
-              </Label>
+        <DialogDescription className="mt-1">
+          Build a chart from your model data and
+          preview it before saving.
+        </DialogDescription>
+      </div>
 
-              <select
-                id="analytics-model"
-                value={selectedModelId}
-                disabled={Boolean(editingChartId)}
-                onChange={(event) =>
-                  changeBuilderModel(event.target.value)
-                }
-                className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none transition-colors focus:border-ring focus:ring-3 focus:ring-ring/20 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
-              >
-                {models.map((model) => (
-                  <option
-                    key={model.model.id}
-                    value={model.model.id}
-                  >
-                    {model.model.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+      <button
+        type="button"
+        onClick={() => {
+          setIsBuilderOpen(false);
+          setEditingChartId(null);
+          setError(null);
+        }}
+        className={cn(
+          "absolute right-5 top-5",
+          "flex size-9 items-center justify-center",
+          "rounded-lg border border-border",
+          "bg-background text-muted-foreground",
+          "transition-colors",
+          "hover:bg-muted hover:text-foreground",
+          "focus:outline-none focus:ring-2 focus:ring-ring/30",
+        )}
+        aria-label="Close analytics builder"
+      >
+        <X className="size-4" />
+      </button>
+    </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="analytics-name">
-                Name
-              </Label>
+    {/* ========================================================= */}
+    {/* MAIN CONTENT                                              */}
+    {/* ========================================================= */}
 
-              <Input
-                id="analytics-name"
-                value={chartName}
-                onChange={(event) =>
-                  setChartName(event.target.value)
-                }
-                placeholder="Annual target"
-              />
-            </div>
-          </div>
+    <div className="min-h-0 flex-1 overflow-hidden">
+      <div className="grid h-full min-h-0 lg:grid-cols-[minmax(0,1fr)_minmax(400px,480px)]">
+        {/* ===================================================== */}
+        {/* LEFT — CONFIGURATION                                  */}
+        {/* ===================================================== */}
 
-          {selectedModel && (
-            <>
-              {/* Chart type + title */}
-              <div className="grid gap-4 sm:grid-cols-2">
+        <div className="min-h-0 overflow-y-auto">
+          <div className="mx-auto w-full max-w-4xl space-y-6 p-6 lg:p-8">
+            {/* MODEL + CHART NAME */}
+
+            <div className="rounded-xl border border-border bg-background">
+              <div className="border-b border-border px-5 py-4">
+                <h3 className="text-sm font-semibold">
+                  Chart setup
+                </h3>
+
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Choose where the data comes from and
+                  give this chart a name.
+                </p>
+              </div>
+
+              <div className="grid gap-5 p-5 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label>Chart type</Label>
+                  <Label htmlFor="analytics-model">
+                    Model
+                  </Label>
 
-                  <div className="grid grid-cols-2 gap-2">
-                    {[
-                      {
-                        value: "line",
-                        label: "Line",
-                        icon: LineChartIcon,
-                      },
-                      {
-                        value: "bar",
-                        label: "Bar",
-                        icon: BarChart3,
-                      },
-                      {
-                        value: "pie",
-                        label: "Pie",
-                        icon: PieChartIcon,
-                      },
-                      {
-                        value: "scatter",
-                        label: "Scatter",
-                        icon: ScatterChartIcon,
-                      },
-                    ].map((item) => {
-                      const Icon = item.icon;
+                  <select
+                    id="analytics-model"
+                    value={selectedModelId}
+                    disabled={Boolean(editingChartId)}
+                    onChange={(event) =>
+                      changeBuilderModel(
+                        event.target.value,
+                      )
+                    }
+                    className={cn(
+                      "h-10 w-full rounded-lg",
+                      "border border-input",
+                      "bg-background px-3 text-sm",
+                      "outline-none transition",
+                      "focus:border-ring",
+                      "focus:ring-3 focus:ring-ring/20",
+                      "disabled:cursor-not-allowed",
+                      "disabled:bg-muted",
+                      "disabled:text-muted-foreground",
+                    )}
+                  >
+                    {models.map((model) => (
+                      <option
+                        key={model.model.id}
+                        value={model.model.id}
+                      >
+                        {model.model.name}
+                      </option>
+                    ))}
+                  </select>
 
-                      const isSelected =
-                        config.chartType === item.value;
+                  {editingChartId && (
+                    <p className="text-xs text-muted-foreground">
+                      The model cannot be changed when
+                      editing an existing chart.
+                    </p>
+                  )}
+                </div>
 
-                      return (
-                        <button
-                          key={item.value}
-                          type="button"
-                          onClick={() => {
+                <div className="space-y-2">
+                  <Label htmlFor="analytics-name">
+                    Chart name
+                  </Label>
+
+                  <Input
+                    id="analytics-name"
+                    value={chartName}
+                    onChange={(event) =>
+                      setChartName(event.target.value)
+                    }
+                    placeholder="Annual target"
+                    className="h-10"
+                  />
+
+                  <p className="text-xs text-muted-foreground">
+                    Used to identify this chart on your
+                    dashboard.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {selectedModel && (
+              <>
+                {/* ================================================= */}
+                {/* TYPE + TITLE                                      */}
+                {/* ================================================= */}
+
+                <div className="rounded-xl border border-border bg-background">
+                  <div className="border-b border-border px-5 py-4">
+                    <h3 className="text-sm font-semibold">
+                      Chart appearance
+                    </h3>
+
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Choose how your data should be
+                      visualised.
+                    </p>
+                  </div>
+
+                  <div className="space-y-5 p-5">
+                    <div className="grid gap-5 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label>Chart type</Label>
+
+                        <select
+                          value={config.chartType}
+                          onChange={(event) => {
                             const chartType =
-                              item.value as AnalyticsChartConfig["chartType"];
+                              event.target
+                                .value as AnalyticsChartConfig["chartType"];
 
                             updateConfig({
                               chartType,
@@ -1148,408 +1210,543 @@ export default function AnalyticsWorkspace({
                                   : config.displayMode,
                             });
                           }}
-                          className={[
-                            "flex h-16 items-center gap-2 rounded-lg border px-3 text-sm font-medium transition-colors",
-                            isSelected
-                              ? "border-primary bg-primary/10 text-primary"
-                              : "border-border bg-background text-muted-foreground hover:border-foreground/20 hover:bg-muted",
-                          ].join(" ")}
+                          className={cn(
+                            "h-10 w-full rounded-lg",
+                            "border border-input",
+                            "bg-background px-3 text-sm",
+                            "outline-none transition",
+                            "focus:border-ring",
+                            "focus:ring-3 focus:ring-ring/20",
+                          )}
                         >
-                          <Icon className="size-5 shrink-0" />
-                          {item.label}
-                        </button>
-                      );
-                    })}
+                          <option value="line">
+                            Line
+                          </option>
+
+                          <option value="bar">
+                            Bar
+                          </option>
+
+                          <option value="pie">
+                            Pie / donut
+                          </option>
+
+                          <option value="scatter">
+                            Scatter
+                          </option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Chart title</Label>
+
+                        <Input
+                          value={config.title}
+                          onChange={(event) =>
+                            updateConfig({
+                              title: event.target.value,
+                            })
+                          }
+                          placeholder="Annual target over time"
+                          className="h-10"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Data range</Label>
+
+                      <select
+                        value={config.displayMode}
+                        disabled={
+                          config.chartType === "pie"
+                        }
+                        onChange={(event) =>
+                          updateConfig({
+                            displayMode:
+                              event.target
+                                .value as AnalyticsChartConfig["displayMode"],
+                          })
+                        }
+                        className={cn(
+                          "h-10 w-full rounded-lg",
+                          "border border-input",
+                          "bg-background px-3 text-sm",
+                          "outline-none transition",
+                          "focus:border-ring",
+                          "focus:ring-3 focus:ring-ring/20",
+                          "disabled:cursor-not-allowed",
+                          "disabled:bg-muted",
+                          "disabled:text-muted-foreground",
+                        )}
+                      >
+                        <option value="periods">
+                          All periods
+                        </option>
+
+                        <option value="latest">
+                          Latest period
+                        </option>
+                      </select>
+                    </div>
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label>Chart title</Label>
+                {/* ================================================= */}
+                {/* VALUES                                            */}
+                {/* ================================================= */}
 
-                  <Input
-                    value={config.title}
-                    onChange={(event) =>
-                      updateConfig({
-                        title: event.target.value,
-                      })
-                    }
-                    placeholder="Annual target over time"
-                  />
+                <div className="rounded-xl border border-border bg-background">
+                  <div className="flex items-center justify-between gap-4 border-b border-border px-5 py-4">
+                    <div>
+                      <h3 className="text-sm font-semibold">
+                        Values
+                      </h3>
+
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Select the inputs or metrics you
+                        want to compare.
+                      </p>
+                    </div>
+
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={
+                        config.series.length >= 6 ||
+                        config.series.length >=
+                          selectedModel.sources.length
+                      }
+                      onClick={addSeries}
+                    >
+                      <Plus />
+                      Add value
+                    </Button>
+                  </div>
+
+                  <div className="divide-y divide-border">
+                    {config.series.map(
+                      (series, index) => (
+                        <div
+                          key={series.id}
+                          className="p-5"
+                        >
+                          <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_220px_44px]">
+                            {/* VALUE */}
+
+                            <div className="space-y-2">
+                              <Label>
+                                Value {index + 1}
+                              </Label>
+
+                              <select
+                                value={
+                                  series.sourceKey
+                                }
+                                onChange={(event) =>
+                                  updateSeries(
+                                    series.id,
+                                    {
+                                      sourceKey:
+                                        event.target
+                                          .value,
+                                      label: "",
+                                    },
+                                  )
+                                }
+                                className={cn(
+                                  "h-10 w-full rounded-lg",
+                                  "border border-input",
+                                  "bg-background px-3 text-sm",
+                                  "outline-none",
+                                  "focus:border-ring",
+                                  "focus:ring-3 focus:ring-ring/20",
+                                )}
+                              >
+                                {selectedModel.sources.map(
+                                  (source) => (
+                                    <option
+                                      key={
+                                        source.sourceKey
+                                      }
+                                      value={
+                                        source.sourceKey
+                                      }
+                                    >
+                                      {source.name}
+                                      {" · "}
+                                      {source.kind}
+                                    </option>
+                                  ),
+                                )}
+                              </select>
+
+                              <Input
+                                value={series.label}
+                                onChange={(event) =>
+                                  updateSeries(
+                                    series.id,
+                                    {
+                                      label:
+                                        event.target
+                                          .value,
+                                    },
+                                  )
+                                }
+                                placeholder={`Optional — defaults to ${getSourceLabel(
+                                  selectedModel,
+                                  series.sourceKey,
+                                )} · ${getScenarioLabel(
+                                  selectedModel,
+                                  series.scenarioId,
+                                )}`}
+                                className="h-10"
+                              />
+                            </div>
+
+                            {/* SCENARIO + COLOR */}
+
+                            <div className="space-y-2">
+                              <Label>Scenario</Label>
+
+                              <select
+                                value={
+                                  series.scenarioId
+                                }
+                                onChange={(event) =>
+                                  updateSeries(
+                                    series.id,
+                                    {
+                                      scenarioId:
+                                        event.target
+                                          .value,
+                                    },
+                                  )
+                                }
+                                className={cn(
+                                  "h-10 w-full rounded-lg",
+                                  "border border-input",
+                                  "bg-background px-3 text-sm",
+                                  "outline-none",
+                                  "focus:border-ring",
+                                  "focus:ring-3 focus:ring-ring/20",
+                                )}
+                              >
+                                <option value="base">
+                                  Base model
+                                </option>
+
+                                {selectedModel.scenarios.map(
+                                  (scenario) => (
+                                    <option
+                                      key={scenario.id}
+                                      value={scenario.id}
+                                    >
+                                      {scenario.name}
+                                    </option>
+                                  ),
+                                )}
+                              </select>
+
+                              <div className="flex h-10 items-center gap-3 rounded-lg border border-input bg-background px-3">
+                                <Palette className="size-4 shrink-0 text-muted-foreground" />
+
+                                <input
+                                  type="color"
+                                  value={series.color}
+                                  onChange={(event) =>
+                                    updateSeries(
+                                      series.id,
+                                      {
+                                        color:
+                                          event.target
+                                            .value,
+                                      },
+                                    )
+                                  }
+                                  className="size-6 cursor-pointer rounded border-0 bg-transparent p-0"
+                                  aria-label="Series colour"
+                                />
+
+                                <span className="font-mono text-xs text-muted-foreground">
+                                  {series.color}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* REMOVE */}
+
+                            <div className="flex items-end justify-end">
+                              <Button
+                                type="button"
+                                size="icon-sm"
+                                variant="ghost"
+                                disabled={
+                                  config.series
+                                    .length <= 1
+                                }
+                                onClick={() =>
+                                  removeSeries(
+                                    series.id,
+                                  )
+                                }
+                                aria-label="Remove value"
+                                className="text-muted-foreground hover:text-destructive"
+                              >
+                                <Trash2 />
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ),
+                    )}
+                  </div>
+
+                  {/* QUICK COLORS */}
+
+                  <div className="border-t border-border px-5 py-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="mr-2 text-xs font-medium text-muted-foreground">
+                        Quick colours
+                      </span>
+
+                      {[
+                        COLORS.slice(0, 4),
+                        [
+                          "#0f172a",
+                          "#475569",
+                          "#94a3b8",
+                          "#cbd5e1",
+                        ],
+                        [
+                          "#0369a1",
+                          "#0891b2",
+                          "#14b8a6",
+                          "#22c55e",
+                        ],
+                        [
+                          "#7c3aed",
+                          "#c026d3",
+                          "#db2777",
+                          "#e11d48",
+                        ],
+                      ].map(
+                        (palette, paletteIndex) => (
+                          <button
+                            key={paletteIndex}
+                            type="button"
+                            className={cn(
+                              "flex h-8 overflow-hidden rounded-lg",
+                              "border border-border",
+                              "transition",
+                              "hover:scale-105",
+                              "hover:border-foreground/30",
+                            )}
+                            onClick={() =>
+                              setConfig((current) => ({
+                                ...current,
+                                series:
+                                  current.series.map(
+                                    (
+                                      series,
+                                      index,
+                                    ) => ({
+                                      ...series,
+                                      color:
+                                        palette[
+                                          index %
+                                            palette.length
+                                        ],
+                                    }),
+                                  ),
+                              }))
+                            }
+                            aria-label={`Apply colour palette ${
+                              paletteIndex + 1
+                            }`}
+                          >
+                            {palette.map((color) => (
+                              <span
+                                key={color}
+                                className="h-full w-6"
+                                style={{
+                                  backgroundColor:
+                                    color,
+                                }}
+                              />
+                            ))}
+                          </button>
+                        ),
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
 
-              {/* Data range */}
-              <div className="space-y-2">
-                <Label>Data range</Label>
+                {/* ================================================= */}
+                {/* APPEARANCE                                       */}
+                {/* ================================================= */}
 
-                <select
-                  value={config.displayMode}
-                  disabled={config.chartType === "pie"}
-                  onChange={(event) =>
-                    updateConfig({
-                      displayMode:
-                        event.target
-                          .value as AnalyticsChartConfig["displayMode"],
-                    })
-                  }
-                  className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none transition-colors focus:border-ring focus:ring-3 focus:ring-ring/20 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
-                >
-                  <option value="periods">
-                    All periods
-                  </option>
+                <div className="rounded-xl border border-border bg-background">
+                  <div className="border-b border-border px-5 py-4">
+                    <div className="flex items-center gap-2">
+                      <Palette className="size-4 text-muted-foreground" />
 
-                  <option value="latest">
-                    Latest period
-                  </option>
-                </select>
-              </div>
+                      <h3 className="text-sm font-semibold">
+                        Display options
+                      </h3>
+                    </div>
 
-              {/* Values */}
-              <div className="overflow-hidden rounded-xl border border-border bg-background">
-                <div className="flex items-center justify-between gap-4 border-b px-4 py-3">
-                  <div>
-                    <h4 className="text-sm font-semibold">
-                      Values
-                    </h4>
-
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      Pick inputs or metrics and optionally
-                      compare scenarios.
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Fine-tune how the chart is presented.
                     </p>
                   </div>
 
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    disabled={
-                      config.series.length >= 6 ||
-                      config.series.length >=
-                        selectedModel.sources.length
-                    }
-                    onClick={addSeries}
-                  >
-                    <Plus />
-                    Add value
-                  </Button>
-                </div>
-
-                <div className="divide-y">
-                  {config.series.map(
-                    (series, index) => (
-                      <div
-                        key={series.id}
-                        className="grid gap-4 p-4 sm:grid-cols-[minmax(0,1fr)_180px_44px]"
-                      >
-                        {/* Value */}
-                        <div className="space-y-2">
-                          <Label>
-                            Value {index + 1}
-                          </Label>
-
-                          <select
-                            value={series.sourceKey}
-                            onChange={(event) =>
-                              updateSeries(
-                                series.id,
-                                {
-                                  sourceKey:
-                                    event.target.value,
-                                  label: "",
-                                },
-                              )
-                            }
-                            className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus:border-ring focus:ring-3 focus:ring-ring/20"
-                          >
-                            {selectedModel.sources.map(
-                              (source) => (
-                                <option
-                                  key={source.sourceKey}
-                                  value={source.sourceKey}
-                                >
-                                  {source.name}
-                                  {" · "}
-                                  {source.kind}
-                                </option>
-                              ),
-                            )}
-                          </select>
-
-                          <Input
-                            value={series.label}
-                            onChange={(event) =>
-                              updateSeries(
-                                series.id,
-                                {
-                                  label:
-                                    event.target.value,
-                                },
-                              )
-                            }
-                            placeholder={`Optional label — defaults to ${getSourceLabel(
-                              selectedModel,
-                              series.sourceKey,
-                            )} · ${getScenarioLabel(
-                              selectedModel,
-                              series.scenarioId,
-                            )}`}
-                          />
-                        </div>
-
-                        {/* Scenario + colour */}
-                        <div className="space-y-2">
-                          <Label>Scenario</Label>
-
-                          <select
-                            value={series.scenarioId}
-                            onChange={(event) =>
-                              updateSeries(
-                                series.id,
-                                {
-                                  scenarioId:
-                                    event.target.value,
-                                },
-                              )
-                            }
-                            className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus:border-ring focus:ring-3 focus:ring-ring/20"
-                          >
-                            <option value="base">
-                              Base model
-                            </option>
-
-                            {selectedModel.scenarios.map(
-                              (scenario) => (
-                                <option
-                                  key={scenario.id}
-                                  value={scenario.id}
-                                >
-                                  {scenario.name}
-                                </option>
-                              ),
-                            )}
-                          </select>
-
-                          <div className="flex h-10 items-center gap-2 rounded-lg border border-input bg-background px-3">
-                            <Palette className="size-4 text-muted-foreground" />
-
-                            <input
-                              type="color"
-                              value={series.color}
-                              onChange={(event) =>
-                                updateSeries(
-                                  series.id,
-                                  {
-                                    color:
-                                      event.target.value,
-                                  },
-                                )
-                              }
-                              className="size-6 cursor-pointer rounded border-0 bg-transparent p-0"
-                              aria-label="Series colour"
-                            />
-
-                            <span className="text-xs text-muted-foreground">
-                              {series.color}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Remove */}
-                        <div className="flex items-end justify-end">
-                          <Button
-                            type="button"
-                            size="icon-sm"
-                            variant="ghost"
-                            disabled={
-                              config.series.length <= 1
-                            }
-                            onClick={() =>
-                              removeSeries(series.id)
-                            }
-                            aria-label="Remove value"
-                          >
-                            <Trash2 />
-                          </Button>
-                        </div>
-                      </div>
-                    ),
-                  )}
-                </div>
-
-                {/* Quick colours */}
-                <div className="flex flex-wrap gap-2 border-t p-4">
-                  <span className="mr-1 self-center text-xs text-muted-foreground">
-                    Quick colours
-                  </span>
-
-                  {[
-                    COLORS.slice(0, 4),
-                    [
-                      "#0f172a",
-                      "#475569",
-                      "#94a3b8",
-                      "#cbd5e1",
-                    ],
-                    [
-                      "#0369a1",
-                      "#0891b2",
-                      "#14b8a6",
-                      "#22c55e",
-                    ],
-                    [
-                      "#7c3aed",
-                      "#c026d3",
-                      "#db2777",
-                      "#e11d48",
-                    ],
-                  ].map(
-                    (palette, paletteIndex) => (
-                      <button
-                        key={paletteIndex}
-                        type="button"
-                        className="flex h-7 overflow-hidden rounded-md border border-border transition-transform hover:scale-105"
-                        onClick={() =>
-                          setConfig((current) => ({
-                            ...current,
-                            series:
-                              current.series.map(
-                                (series, index) => ({
-                                  ...series,
-                                  color:
-                                    palette[
-                                      index %
-                                        palette.length
-                                    ],
-                                }),
-                              ),
-                          }))
+                  <div className="grid gap-3 p-5 sm:grid-cols-3">
+                    <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-border p-3 text-sm transition-colors hover:bg-muted/50">
+                      <input
+                        type="checkbox"
+                        checked={config.showLegend}
+                        onChange={(event) =>
+                          updateConfig({
+                            showLegend:
+                              event.target.checked,
+                          })
                         }
-                        aria-label={`Apply colour palette ${
-                          paletteIndex + 1
-                        }`}
-                      >
-                        {palette.map((color) => (
-                          <span
-                            key={color}
-                            className="h-full w-5"
-                            style={{
-                              backgroundColor: color,
-                            }}
-                          />
-                        ))}
-                      </button>
-                    ),
-                  )}
+                        className="size-4 rounded"
+                      />
+
+                      <span>Show legend</span>
+                    </label>
+
+                    <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-border p-3 text-sm transition-colors hover:bg-muted/50">
+                      <input
+                        type="checkbox"
+                        checked={config.showGrid}
+                        onChange={(event) =>
+                          updateConfig({
+                            showGrid:
+                              event.target.checked,
+                          })
+                        }
+                        className="size-4 rounded"
+                      />
+
+                      <span>Show grid</span>
+                    </label>
+
+                    <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-border p-3 text-sm transition-colors hover:bg-muted/50">
+                      <input
+                        type="checkbox"
+                        checked={config.showValues}
+                        onChange={(event) =>
+                          updateConfig({
+                            showValues:
+                              event.target.checked,
+                          })
+                        }
+                        className="size-4 rounded"
+                      />
+
+                      <span>Show values</span>
+                    </label>
+                  </div>
                 </div>
-              </div>
-
-              {/* Appearance */}
-              <div className="overflow-hidden rounded-xl border border-border bg-background">
-                <div className="flex items-center gap-2 border-b px-4 py-3">
-                  <Palette className="size-4" />
-
-                  <h4 className="text-sm font-semibold">
-                    Appearance
-                  </h4>
-                </div>
-
-                <div className="grid gap-3 p-4 sm:grid-cols-3">
-                  <label className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={config.showLegend}
-                      onChange={(event) =>
-                        updateConfig({
-                          showLegend:
-                            event.target.checked,
-                        })
-                      }
-                      className="size-4 rounded"
-                    />
-
-                    Show legend
-                  </label>
-
-                  <label className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={config.showGrid}
-                      onChange={(event) =>
-                        updateConfig({
-                          showGrid:
-                            event.target.checked,
-                        })
-                      }
-                      className="size-4 rounded"
-                    />
-
-                    Show grid
-                  </label>
-
-                  <label className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={config.showValues}
-                      onChange={(event) =>
-                        updateConfig({
-                          showValues:
-                            event.target.checked,
-                        })
-                      }
-                      className="size-4 rounded"
-                    />
-
-                    Show values
-                  </label>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Right — Live Preview */}
-      <div className="min-h-0 overflow-y-auto border-l border-border bg-muted p-5">
-        <div className="lg:sticky lg:top-0">
-          <div className="mb-4">
-            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Live preview
-            </p>
-
-            <h3 className="mt-1 truncate text-sm font-semibold">
-              {config.title ||
-                chartName ||
-                "Untitled chart"}
-            </h3>
-          </div>
-
-          <div className="rounded-xl border border-border bg-background p-4 shadow-sm">
-            {selectedModel ? (
-              <AnalyticsChart
-                modelData={selectedModel}
-                config={config}
-              />
-            ) : (
-              <div className="flex h-[360px] items-center justify-center rounded-lg border border-dashed border-border text-sm text-muted-foreground">
-                Select a model to preview the chart.
-              </div>
+              </>
             )}
           </div>
         </div>
+
+        {/* ===================================================== */}
+        {/* RIGHT — PREVIEW                                       */}
+        {/* ===================================================== */}
+
+        <aside className="hidden min-h-0 border-l border-border bg-muted/20 lg:block">
+          <div className="flex h-full min-h-0 flex-col">
+            <div className="shrink-0 border-b border-border px-6 py-5">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                Live preview
+              </p>
+
+              <h3 className="mt-1 truncate text-base font-semibold">
+                {config.title ||
+                  chartName ||
+                  "Untitled chart"}
+              </h3>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto p-6">
+              <div className="rounded-xl border border-border bg-background p-4 shadow-sm">
+                {selectedModel ? (
+                  <AnalyticsChart
+                    modelData={selectedModel}
+                    config={{
+                      ...config,
+                      width: 440,
+                      height: 340,
+                    }}
+                  />
+                ) : (
+                  <div className="flex h-[340px] items-center justify-center rounded-lg border border-dashed border-border text-center text-sm text-muted-foreground">
+                    Select a model to preview
+                    your chart.
+                  </div>
+                )}
+              </div>
+
+              {selectedModel && (
+                <div className="mt-4 rounded-xl border border-border bg-background p-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-muted-foreground">
+                      Data source
+                    </span>
+
+                    <span className="max-w-[220px] truncate text-xs font-medium">
+                      {selectedModel.model.name}
+                    </span>
+                  </div>
+
+                  <div className="mt-3 flex items-center justify-between">
+                    <span className="text-xs font-medium text-muted-foreground">
+                      Values
+                    </span>
+
+                    <span className="text-xs font-medium">
+                      {config.series.length}
+                    </span>
+                  </div>
+
+                  <div className="mt-3 flex items-center justify-between">
+                    <span className="text-xs font-medium text-muted-foreground">
+                      Chart type
+                    </span>
+
+                    <span className="text-xs font-medium capitalize">
+                      {config.chartType}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </aside>
       </div>
     </div>
 
-    {/* Error */}
+    {/* ========================================================= */}
+    {/* ERROR                                                     */}
+    {/* ========================================================= */}
+
     {error && (
-      <div className="shrink-0 border-t border-destructive/30 bg-destructive/10 px-6 py-3 text-sm text-destructive">
-        <div className="flex items-center justify-between gap-4">
+      <div className="shrink-0 border-t border-destructive/20 bg-destructive/5 px-6 py-3">
+        <div className="flex items-center justify-between gap-4 text-sm text-destructive">
           <span>{error}</span>
 
           <button
             type="button"
             onClick={() => setError(null)}
             aria-label="Dismiss error"
-            className="shrink-0 rounded-md p-1 hover:bg-destructive/10"
+            className="rounded-md p-1 hover:bg-destructive/10"
           >
             <X className="size-4" />
           </button>
@@ -1557,44 +1754,59 @@ export default function AnalyticsWorkspace({
       </div>
     )}
 
-    {/* Footer */}
-    <DialogFooter className="shrink-0 border-t bg-background px-6 py-4">
-      <Button
-        type="button"
-        variant="outline"
-        onClick={() => {
-          setIsBuilderOpen(false);
-          setEditingChartId(null);
-          setError(null);
-        }}
-      >
-        Cancel
-      </Button>
+    {/* ========================================================= */}
+    {/* FOOTER                                                    */}
+    {/* ========================================================= */}
 
-      <Button
-        type="button"
-        disabled={
-          isSaving ||
-          !selectedModel ||
-          config.series.length === 0
-        }
-        onClick={save}
-      >
-        {isSaving ? (
-          "Saving..."
-        ) : editingChartId ? (
-          <>
-            <Check />
-            Save changes
-          </>
-        ) : (
-          <>
-            <Check />
-            Save chart
-          </>
-        )}
-      </Button>
-    </DialogFooter>
+    <div className="flex shrink-0 items-center justify-between border-t border-border bg-background px-6 py-4">
+      <div className="hidden text-xs text-muted-foreground sm:block">
+        {selectedModel
+          ? `${config.series.length} value${
+              config.series.length === 1
+                ? ""
+                : "s"
+            } selected`
+          : "Select a model to continue"}
+      </div>
+
+      <div className="ml-auto flex items-center gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => {
+            setIsBuilderOpen(false);
+            setEditingChartId(null);
+            setError(null);
+          }}
+        >
+          Cancel
+        </Button>
+
+        <Button
+          type="button"
+          disabled={
+            isSaving ||
+            !selectedModel ||
+            config.series.length === 0
+          }
+          onClick={save}
+        >
+          {isSaving ? (
+            "Saving..."
+          ) : editingChartId ? (
+            <>
+              <Check />
+              Save changes
+            </>
+          ) : (
+            <>
+              <Check />
+              Save chart
+            </>
+          )}
+        </Button>
+      </div>
+    </div>
   </DialogContent>
 </Dialog>
     </section>
