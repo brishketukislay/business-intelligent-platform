@@ -508,7 +508,6 @@ models,
 function openCreate() {
 const firstModel = models[0];
 
-```
 if (!firstModel) {
   return;
 }
@@ -525,7 +524,6 @@ setConfig(next);
 setChartName("");
 setError(null);
 setIsBuilderOpen(true);
-```
 
 }
 
@@ -557,7 +555,6 @@ const model = modelMap.get(
 chart.modelId,
 );
 
-```
 if (!model) {
   setError(
     "The model for this chart is no longer available.",
@@ -584,7 +581,6 @@ setConfig({
 setChartName(chart.name);
 setError(null);
 setIsBuilderOpen(true);
-```
 
 }
 
@@ -877,7 +873,6 @@ return () =>
 if (models.length === 0) {
 return ( <section className="rounded-xl border border-dashed bg-background p-10 text-center"> <div className="mx-auto flex size-12 items-center justify-center rounded-xl bg-primary/10 text-primary"> <BarChart3 className="size-6" /> </div>
 
-```
     <h2 className="mt-4 font-semibold">
       No models available
     </h2>

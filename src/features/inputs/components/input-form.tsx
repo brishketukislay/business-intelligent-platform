@@ -1,16 +1,33 @@
 "use client";
 
-import { useState } from "react";
+import {
+  useState,
+} from "react";
 
-import { createInputAction } from "../actions/input-actions";
+import {
+  createInputAction,
+} from "../actions/input-actions";
+
 import {
   INPUT_TYPES,
   type InputType,
 } from "../types";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import {
+  generateUniqueKey,
+} from "@/lib/key-utils";
+
+import {
+  Button,
+} from "@/components/ui/button";
+
+import {
+  Input,
+} from "@/components/ui/input";
+
+import {
+  Label,
+} from "@/components/ui/label";
 
 import {
   Select,
@@ -20,131 +37,128 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-
 type InputScope =
   | "MODEL"
   | "PERIOD";
-
 
 export function InputForm({
   modelId,
 }: {
   modelId: string;
 }) {
+  const [
+    name,
+    setName,
+  ] = useState("");
 
   const [
     type,
     setType,
-  ] = useState<InputType>("Number");
-
+  ] = useState<InputType>(
+    "Number"
+  );
 
   const [
     scope,
     setScope,
-  ] = useState<InputScope>("MODEL");
-
+  ] = useState<InputScope>(
+    "MODEL"
+  );
 
   const [
     isSubmitting,
     setIsSubmitting,
   ] = useState(false);
 
-
   const [
     message,
     setMessage,
-  ] = useState<string | null>(null);
+  ] = useState<string | null>(
+    null
+  );
 
+  const generatedKey =
+    generateUniqueKey(
+      name || "item",
+      []
+    );
 
   async function submit(
     formData: FormData
   ) {
-
     setIsSubmitting(true);
     setMessage(null);
-
 
     formData.set(
       "modelId",
       modelId
     );
 
-
     formData.set(
       "type",
       type
     );
-
 
     formData.set(
       "scope",
       scope
     );
 
+    /*
+     * The generated key is submitted, but the
+     * server remains authoritative and will
+     * regenerate it if necessary.
+     */
+    formData.set(
+      "key",
+      generatedKey
+    );
 
     try {
-
       const result =
         await createInputAction(
           formData
         );
 
-
       if (result.success) {
-
         setMessage(
-          "Input definition created successfully."
+          `Input created. Key: ${result.key}`
         );
-
 
         window.location.reload();
 
         return;
-
       }
 
-
       setMessage(
-        typeof result.error === "string"
+        typeof result.error ===
+          "string"
           ? result.error
           : "Unable to create input definition."
       );
-
     } catch (error) {
-
       console.error(error);
 
       setMessage(
-        "An unexpected error occurred."
+        "Unable to create input definition. Please try again."
       );
-
     } finally {
-
       setIsSubmitting(false);
-
     }
-
   }
 
-
   return (
-
     <form
       action={submit}
       className="space-y-5"
     >
-
       <input
         type="hidden"
         name="modelId"
         value={modelId}
       />
 
-
-      {/* Name */}
-
       <div className="space-y-2">
-
         <Label htmlFor="input-name">
           Name
         </Label>
@@ -153,38 +167,40 @@ export function InputForm({
           id="input-name"
           name="name"
           placeholder="e.g. Annual Target"
+          value={name}
+          onChange={(event) =>
+            setName(
+              event.target.value
+            )
+          }
           required
         />
-
       </div>
 
-
-      {/* Key */}
-
       <div className="space-y-2">
-
-        <Label htmlFor="input-key">
-          Key
+        <Label>
+          System key
         </Label>
 
         <Input
-          id="input-key"
-          name="key"
-          placeholder="e.g. annual_target"
-          required
+          value={
+            name
+              ? generatedKey
+              : "Start typing a name..."
+          }
+          readOnly
+          tabIndex={-1}
+          className="bg-muted/40 font-mono text-sm"
         />
 
         <p className="text-xs text-muted-foreground">
-          Use lowercase letters, numbers and underscores.
+          This is generated automatically and
+          is used internally by formulas. You
+          don't need to remember it.
         </p>
-
       </div>
 
-
-      {/* Type */}
-
       <div className="space-y-2">
-
         <Label>
           Type
         </Label>
@@ -192,56 +208,39 @@ export function InputForm({
         <Select
           value={type}
           onValueChange={(value) => {
-
             if (value) {
-
               setType(
                 value as InputType
               );
-
             }
-
           }}
         >
-
           <SelectTrigger>
-            <SelectValue placeholder="Select type" />
+            <SelectValue />
           </SelectTrigger>
 
-
           <SelectContent>
-
             {INPUT_TYPES.map(
-              inputType => (
-
+              (inputType) => (
                 <SelectItem
                   key={inputType}
                   value={inputType}
                 >
                   {inputType}
                 </SelectItem>
-
               )
             )}
-
           </SelectContent>
-
         </Select>
-
 
         <input
           type="hidden"
           name="type"
           value={type}
         />
-
       </div>
 
-
-      {/* Scope */}
-
       <div className="space-y-2">
-
         <Label>
           Value Scope
         </Label>
@@ -249,26 +248,19 @@ export function InputForm({
         <Select
           value={scope}
           onValueChange={(value) => {
-
             if (
               value === "MODEL" ||
               value === "PERIOD"
             ) {
-
               setScope(value);
-
             }
-
           }}
         >
-
           <SelectTrigger>
-            <SelectValue placeholder="Select value scope" />
+            <SelectValue />
           </SelectTrigger>
 
-
           <SelectContent>
-
             <SelectItem value="MODEL">
               Model Level
             </SelectItem>
@@ -276,11 +268,8 @@ export function InputForm({
             <SelectItem value="PERIOD">
               Monthly / Period
             </SelectItem>
-
           </SelectContent>
-
         </Select>
-
 
         <input
           type="hidden"
@@ -288,23 +277,14 @@ export function InputForm({
           value={scope}
         />
 
-
         <p className="text-xs text-muted-foreground">
-
           {scope === "PERIOD"
             ? "This input will have a separate value for each model period."
-            : "This input has one model-level value."
-          }
-
+            : "This input has one model-level value."}
         </p>
-
       </div>
 
-
-      {/* Unit */}
-
       <div className="space-y-2">
-
         <Label htmlFor="input-unit">
           Unit
         </Label>
@@ -314,14 +294,9 @@ export function InputForm({
           name="unit"
           placeholder="e.g. hours, GBP, GBP/hr"
         />
-
       </div>
 
-
-      {/* Category */}
-
       <div className="space-y-2">
-
         <Label htmlFor="input-category">
           Category
         </Label>
@@ -331,35 +306,25 @@ export function InputForm({
           name="category"
           placeholder="e.g. Targets, Actuals, Costs"
         />
-
       </div>
-
-
-      {/* Submit */}
 
       <Button
         type="submit"
-        disabled={isSubmitting}
+        disabled={
+          isSubmitting ||
+          !name.trim()
+        }
       >
-
         {isSubmitting
           ? "Creating..."
-          : "Create Input"
-        }
-
+          : "Create Input"}
       </Button>
 
-
       {message && (
-
         <p className="text-sm text-muted-foreground">
           {message}
         </p>
-
       )}
-
     </form>
-
   );
-
 }
