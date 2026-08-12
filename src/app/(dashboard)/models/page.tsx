@@ -3,12 +3,14 @@ import {
 } from "@/features/models/services/model-service";
 
 import {
-  ModelCreateWizard,
-} from "@/features/models/components/model-create-wizard";
-
-import {
   ModelList,
 } from "@/features/models/components/model-list";
+
+// import {
+//   ModelForm,
+// } from "@/features/models/components/model-form";
+
+import {ModelCreateWizard} from "@/features/models/components/model-create-wizard";
 
 import {
   requireCurrentUser,
@@ -25,7 +27,7 @@ export default async function ModelsPage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-8">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-sm font-medium text-primary">
             Performance tracking
@@ -36,16 +38,18 @@ export default async function ModelsPage() {
           </h1>
 
           <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-            Track a company, project, person, sales
-            process or anything else that matters to
-            your organisation.
+            Track your company, projects, people,
+            customers, sales or anything else that
+            matters to the business.
           </p>
         </div>
 
         <ModelCreateWizard />
       </div>
 
-      <ModelList models={models} />
+      <ModelList
+        models={models}
+      />
     </div>
   );
 }

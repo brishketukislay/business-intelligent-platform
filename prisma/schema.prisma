@@ -47,14 +47,15 @@ model BusinessModel {
   status      String   @default("ACTIVE")
   createdBy   String
   createdAt   DateTime @default(now())
+  itemLabelSingular String @default("Item")
+  itemLabelPlural   String @default("Items")
 
   creator User @relation(fields: [createdBy], references: [id])
-
   settings        BusinessModelSettings?
   inputs          InputDefinition[]
   metrics         MetricDefinition[]
   periods         ModelPeriod[]
-  items           ModelItem[] // <-- ADD THIS
+  items           ModelItem[]
   savedValues     SavedModelValue[]
   savedModels     SavedModel[]
   scenarios       Scenario[]

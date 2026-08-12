@@ -24,8 +24,11 @@ import {
   InputTable,
 } from "@/features/inputs/components/input-table";
 
+// import {
+//   ModelEditForm,
+// } from "@/features/models/components/model-edit-form";
 import {
-  ModelEditForm,
+  ModelForm,
 } from "@/features/models/components/model-edit-form";
 
 import {
@@ -166,7 +169,7 @@ export default async function ModelEditPage({
 
         <div className="p-6">
 
-          <ModelEditForm
+          <ModelForm
             model={model}
           />
 

@@ -1,38 +1,208 @@
+import Link from "next/link";
+
 import {
-requireCurrentUser,
+  ArrowRight,
+  BarChart3,
+  Plus,
+} from "lucide-react";
+
+import {
+  getBusinessModels,
+} from "@/features/models/services/model-service";
+
+import {
+  ModelList,
+} from "@/features/models/components/model-list";
+
+// import {
+//   ModelForm,
+// } from "../../../features/models/components/"
+// //"@/features/models/components/model-form";
+import {
+  ModelCreateWizard,
+} from "@/features/models/components/model-create-wizard";
+
+import {
+  requireCurrentUser,
 } from "@/lib/current-user";
 
-import {
-getAnalyticsDashboardData,
-} from "@/features/analytics/services/analytics-service";
-
-import AnalyticsWorkspace from "@/features/analytics/components/analytics-workspace-client";
-
 export default async function DashboardPage() {
-const user =
-await requireCurrentUser();
+  const user =
+    await requireCurrentUser();
 
-const analytics =
-await getAnalyticsDashboardData(
-user.id
-);
+  const models =
+    await getBusinessModels(
+      user.id,
+    );
 
-return ( <div className="space-y-8"> <div> <h1 className="text-2xl font-semibold tracking-tight">
-Dashboard </h1>
-    <p className="mt-1 text-sm text-muted-foreground">
-      Your saved business analytics.
-    </p>
-  </div>
+  const activeModels =
+    models.filter(
+      (model) =>
+        model.status ===
+        "ACTIVE",
+    );
 
-  <AnalyticsWorkspace
-    models={
-      analytics.models
-    }
-    charts={
-      analytics.charts
-    }
-  />
-</div>
+  return (
+    <div className="mx-auto max-w-7xl space-y-8">
+      <header className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-sm font-medium text-primary">
+            Performance overview
+          </p>
 
-);
+          <h1 className="mt-1 text-3xl font-semibold tracking-tight">
+            How is everything doing?
+          </h1>
+
+          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+            Open a tracker to update performance data,
+            review results or investigate an area of
+            the business.
+          </p>
+        </div>
+
+        <ModelCreateWizard />
+      </header>
+
+      {activeModels.length === 0 ? (
+        <EmptyDashboard />
+      ) : (
+        <>
+          <section className="grid gap-4 sm:grid-cols-3">
+            <SummaryCard
+              label="Active trackers"
+              value={String(
+                activeModels.length,
+              )}
+            />
+
+            <SummaryCard
+              label="Measures"
+              value={String(
+                activeModels.reduce(
+                  (
+                    total,
+                    model,
+                  ) =>
+                    total +
+                    (model
+                      ._count
+                      ?.inputs ??
+                      0),
+                  0,
+                ),
+              )}
+            />
+
+            <SummaryCard
+              label="Calculated results"
+              value={String(
+                activeModels.reduce(
+                  (
+                    total,
+                    model,
+                  ) =>
+                    total +
+                    (model
+                      ._count
+                      ?.metrics ??
+                      0),
+                  0,
+                ),
+              )}
+            />
+          </section>
+
+          <section className="space-y-4">
+            <div className="flex items-end justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-semibold">
+                  Your trackers
+                </h2>
+
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Everything you're currently tracking.
+                </p>
+              </div>
+
+              <Link
+                href="/models"
+                className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+              >
+                View all
+                <ArrowRight className="size-4" />
+              </Link>
+            </div>
+
+            <ModelList
+              models={
+                activeModels
+              }
+            />
+          </section>
+
+          <section className="rounded-2xl border bg-muted/20 p-6">
+            <div className="flex items-start gap-4">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <BarChart3 className="size-5" />
+              </div>
+
+              <div>
+                <h2 className="font-semibold">
+                  Need deeper analysis?
+                </h2>
+
+                <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+                  Advanced charts, scenarios and saved
+                  analysis are still available from each
+                  tracker. They are kept separate from the
+                  everyday data-entry workflow.
+                </p>
+              </div>
+            </div>
+          </section>
+        </>
+      )}
+    </div>
+  );
+}
+
+function SummaryCard({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-2xl border bg-background p-5">
+      <p className="text-sm text-muted-foreground">
+        {label}
+      </p>
+
+      <p className="mt-2 text-3xl font-semibold">
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function EmptyDashboard() {
+  return (
+    <div className="rounded-2xl border border-dashed p-12 text-center">
+      <div className="mx-auto flex size-12 items-center justify-center rounded-xl bg-primary/10">
+        <Plus className="size-6 text-primary" />
+      </div>
+
+      <h2 className="mt-4 text-lg font-semibold">
+        Start tracking performance
+      </h2>
+
+      <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+        Create a company, project, individual,
+        customer, sales or custom tracker to get
+        started.
+      </p>
+    </div>
+  );
 }
