@@ -39,7 +39,9 @@ import {
 
 type InputScope =
   | "MODEL"
-  | "PERIOD";
+  | "PERIOD"
+  | "ITEM"
+  | "ITEM_PERIOD";
 
 export function InputForm({
   modelId,
@@ -248,27 +250,37 @@ export function InputForm({
         <Select
           value={scope}
           onValueChange={(value) => {
-            if (
-              value === "MODEL" ||
-              value === "PERIOD"
-            ) {
-              setScope(value);
-            }
-          }}
+  if (
+    value === "MODEL" ||
+    value === "PERIOD" ||
+    value === "ITEM" ||
+    value === "ITEM_PERIOD"
+  ) {
+    setScope(value);
+  }
+}}
         >
           <SelectTrigger>
             <SelectValue />
           </SelectTrigger>
 
-          <SelectContent>
-            <SelectItem value="MODEL">
-              Model Level
-            </SelectItem>
+<SelectContent>
+  <SelectItem value="MODEL">
+    Model Level
+  </SelectItem>
 
-            <SelectItem value="PERIOD">
-              Monthly / Period
-            </SelectItem>
-          </SelectContent>
+  <SelectItem value="PERIOD">
+    Monthly / Period
+  </SelectItem>
+
+  <SelectItem value="ITEM">
+    Item Level
+  </SelectItem>
+
+  <SelectItem value="ITEM_PERIOD">
+    Item + Period
+  </SelectItem>
+</SelectContent>
         </Select>
 
         <input
@@ -277,11 +289,19 @@ export function InputForm({
           value={scope}
         />
 
-        <p className="text-xs text-muted-foreground">
-          {scope === "PERIOD"
-            ? "This input will have a separate value for each model period."
-            : "This input has one model-level value."}
-        </p>
+<p className="text-xs text-muted-foreground">
+  {scope === "MODEL" &&
+    "This input has one value for the entire model."}
+
+  {scope === "PERIOD" &&
+    "This input has a separate value for each model period."}
+
+  {scope === "ITEM" &&
+    "This input has one value for each item."}
+
+  {scope === "ITEM_PERIOD" &&
+    "This input has a separate value for each item and period."}
+</p>
       </div>
 
       <div className="space-y-2">

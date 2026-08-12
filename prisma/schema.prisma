@@ -20,7 +20,7 @@ model User {
   businessModels  BusinessModel[]
   workingValues   WorkingValue[]
   savedModels     SavedModel[]
-  scenarios       Scenario[]
+  scenarios      Scenario[]
   modelAccess     BusinessModelAccess[]
   analyticsCharts AnalyticsChart[]
 }
@@ -47,12 +47,24 @@ model BusinessModel {
   createdBy   String
   createdAt   DateTime @default(now())
 
+  /*
+   * Generic label used by the UI.
+   *
+   * Examples:
+   * Project / Projects
+   * Department / Departments
+   * Customer / Customers
+   */
+  itemLabelSingular String @default("Item")
+  itemLabelPlural   String @default("Items")
+
   creator User @relation(fields: [createdBy], references: [id])
 
   settings        BusinessModelSettings?
   inputs          InputDefinition[]
   metrics         MetricDefinition[]
   periods         ModelPeriod[]
+  items           ModelItem[]
   savedValues     SavedModelValue[]
   savedModels     SavedModel[]
   scenarios       Scenario[]
@@ -82,6 +94,7 @@ model ModelPeriod {
 
   model            BusinessModel     @relation(fields: [modelId], references: [id], onDelete: Cascade)
   values           PeriodValue[]
+  itemValues       ModelItemValue[]
   savedModelValues SavedModelValue[]
   scenarioValues   ScenarioValue[]
 
@@ -97,7 +110,15 @@ model InputDefinition {
   type        String
   unit        String?
   category    String?
+
+  /*
+   * MODEL
+   * PERIOD
+   * ITEM
+   * ITEM_PERIOD
+   */
   scope       String   @default("MODEL")
+
   status      String   @default("ACTIVE")
   isRequired  Boolean  @default(false)
   description String?
@@ -107,6 +128,7 @@ model InputDefinition {
 
   workingValues  WorkingValue[]
   periodValues   PeriodValue[]
+  itemValues     ModelItemValue[]
   savedValues    SavedModelValue[]
   scenarioValues ScenarioValue[]
 
@@ -126,6 +148,75 @@ model PeriodValue {
   @@unique([periodId, inputId])
   @@index([periodId])
   @@index([inputId])
+}
+
+/*
+ * Generic entity within a model.
+ *
+ * Examples:
+ *
+ * Project A
+ * Project B
+ * Project C
+ *
+ * or:
+ *
+ * Engineering
+ * Sales
+ * Marketing
+ */
+model ModelItem {
+  id        String   @id @default(cuid())
+  modelId   String
+  name      String
+  key       String
+  status    String   @default("ACTIVE")
+  sortOrder Int      @default(0)
+  metadata  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  model  BusinessModel       @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  values ModelItemValue[]
+  savedValues SavedModelValue[]
+  scenarioValues ScenarioValue[]
+
+  @@unique([modelId, key])
+  @@index([modelId, sortOrder])
+}
+
+/*
+ * Values belonging to an item.
+ *
+ * periodId = null
+ *   -> item-level value
+ *
+ * periodId != null
+ *   -> item + period value
+ *
+ * Example:
+ *
+ * Project A / estimated_hours / null  / 1000
+ * Project A / spent_hours    / Jan   / 100
+ * Project A / spent_hours    / Feb   / 120
+ */
+model ModelItemValue {
+  id        String   @id @default(cuid())
+  itemId    String
+  inputId   String
+  periodId  String?
+  value     String
+  updatedAt DateTime @updatedAt
+
+  item   ModelItem       @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  input  InputDefinition @relation(fields: [inputId], references: [id], onDelete: Cascade)
+  period ModelPeriod?    @relation(fields: [periodId], references: [id], onDelete: Cascade)
+
+  @@index([itemId])
+  @@index([inputId])
+  @@index([periodId])
+  @@index([itemId, inputId])
+  @@index([itemId, periodId])
 }
 
 model MetricDefinition {
@@ -181,6 +272,7 @@ model SavedModelValue {
   inputId      String
   savedModelId String?
   periodId     String?
+  itemId       String?
   value        String
   createdAt    DateTime @default(now())
 
@@ -188,9 +280,11 @@ model SavedModelValue {
   input      InputDefinition @relation(fields: [inputId], references: [id], onDelete: Cascade)
   savedModel SavedModel?     @relation(fields: [savedModelId], references: [id], onDelete: Cascade)
   period     ModelPeriod?    @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  item       ModelItem?      @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
   @@index([savedModelId])
   @@index([periodId])
+  @@index([itemId])
 }
 
 model Scenario {
@@ -216,16 +310,19 @@ model ScenarioValue {
   scenarioId String
   inputId    String
   periodId   String?
+  itemId     String?
   value      String
   updatedAt  DateTime @updatedAt
 
   scenario Scenario        @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
   input    InputDefinition @relation(fields: [inputId], references: [id], onDelete: Cascade)
   period   ModelPeriod?    @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  item     ModelItem?      @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
-  @@unique([scenarioId, inputId, periodId])
   @@index([scenarioId])
   @@index([periodId])
+  @@index([itemId])
+  @@index([scenarioId, inputId])
 }
 
 model BusinessModelAccess {
@@ -256,5 +353,5 @@ model AnalyticsChart {
   creator User          @relation(fields: [createdBy], references: [id], onDelete: Cascade)
 
   @@index([modelId, createdAt])
-  @@index([createdBy, createdAt])
+  @@index([createdBy])
 }
