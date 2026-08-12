@@ -1,22 +1,54 @@
+// import {
+//   LayoutDashboard,
+//   Boxes,
+//   Shield,
+// } from "lucide-react";
+
+// export const navigationItems = [
+//   {
+//     name: "Dashboard",
+//     href: "/dashboard",
+//     icon: LayoutDashboard,
+//   },
+//   {
+//     name: "Models",
+//     href: "/models",
+//     icon: Boxes,
+//   },
+//   {
+//     name: "Admin",
+//     href: "/admin/users",
+//     icon: Shield,
+//   },
+// ];
 import {
+  BarChart3,
   LayoutDashboard,
-  Boxes,
+  Settings,
   Shield,
 } from "lucide-react";
 
 export const navigationItems = [
   {
-    name: "Dashboard",
+    name: "Overview",
     href: "/dashboard",
     icon: LayoutDashboard,
   },
   {
-    name: "Models",
+    name: "Trackers",
     href: "/models",
-    icon: Boxes,
+    icon: BarChart3,
   },
   {
-    name: "Admin",
+    name: "Settings",
+    href: "/settings",
+    icon: Settings,
+  },
+];
+
+export const adminNavigationItems = [
+  {
+    name: "Users",
     href: "/admin/users",
     icon: Shield,
   },

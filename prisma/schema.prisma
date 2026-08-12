@@ -20,7 +20,7 @@ model User {
   businessModels  BusinessModel[]
   workingValues   WorkingValue[]
   savedModels     SavedModel[]
-  scenarios      Scenario[]
+  scenarios       Scenario[]
   modelAccess     BusinessModelAccess[]
   analyticsCharts AnalyticsChart[]
 }
@@ -43,20 +43,10 @@ model BusinessModel {
   id          String   @id @default(cuid())
   name        String
   description String?
+  modelType   String   @default("CUSTOM")
   status      String   @default("ACTIVE")
   createdBy   String
   createdAt   DateTime @default(now())
-
-  /*
-   * Generic label used by the UI.
-   *
-   * Examples:
-   * Project / Projects
-   * Department / Departments
-   * Customer / Customers
-   */
-  itemLabelSingular String @default("Item")
-  itemLabelPlural   String @default("Items")
 
   creator User @relation(fields: [createdBy], references: [id])
 
@@ -64,7 +54,7 @@ model BusinessModel {
   inputs          InputDefinition[]
   metrics         MetricDefinition[]
   periods         ModelPeriod[]
-  items           ModelItem[]
+  items           ModelItem[] // <-- ADD THIS
   savedValues     SavedModelValue[]
   savedModels     SavedModel[]
   scenarios       Scenario[]
@@ -103,21 +93,21 @@ model ModelPeriod {
 }
 
 model InputDefinition {
-  id          String   @id @default(cuid())
-  modelId     String
-  name        String
-  key         String
-  type        String
-  unit        String?
-  category    String?
+  id       String  @id @default(cuid())
+  modelId  String
+  name     String
+  key      String
+  type     String
+  unit     String?
+  category String?
 
-  /*
+  /**
    * MODEL
    * PERIOD
    * ITEM
    * ITEM_PERIOD
    */
-  scope       String   @default("MODEL")
+  scope String @default("MODEL")
 
   status      String   @default("ACTIVE")
   isRequired  Boolean  @default(false)
@@ -150,17 +140,13 @@ model PeriodValue {
   @@index([inputId])
 }
 
-/*
+/**
  * Generic entity within a model.
- *
  * Examples:
- *
  * Project A
  * Project B
  * Project C
- *
  * or:
- *
  * Engineering
  * Sales
  * Marketing
@@ -176,26 +162,22 @@ model ModelItem {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  model  BusinessModel       @relation(fields: [modelId], references: [id], onDelete: Cascade)
-  values ModelItemValue[]
-  savedValues SavedModelValue[]
+  model          BusinessModel     @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  values         ModelItemValue[]
+  savedValues    SavedModelValue[]
   scenarioValues ScenarioValue[]
 
   @@unique([modelId, key])
   @@index([modelId, sortOrder])
 }
 
-/*
+/**
  * Values belonging to an item.
- *
  * periodId = null
- *   -> item-level value
- *
+ * -> item-level value
  * periodId != null
- *   -> item + period value
- *
+ * -> item + period value
  * Example:
- *
  * Project A / estimated_hours / null  / 1000
  * Project A / spent_hours    / Jan   / 100
  * Project A / spent_hours    / Feb   / 120

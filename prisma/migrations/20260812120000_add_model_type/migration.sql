@@ -1,0 +1,2 @@
+ALTER TABLE "BusinessModel"
+ADD COLUMN "modelType" TEXT NOT NULL DEFAULT 'CUSTOM';

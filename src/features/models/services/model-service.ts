@@ -42,7 +42,15 @@ export async function getBusinessModels(
       orderBy: {
         createdAt: "desc",
       },
-
+      include: {
+    _count: {
+      select: {
+        inputs: true,
+        metrics: true,
+        periods: true,
+      },
+    },
+  },
     });
 
   }
@@ -77,6 +85,15 @@ export async function getBusinessModels(
     orderBy: {
       createdAt: "desc",
     },
+    include: {
+    _count: {
+      select: {
+        inputs: true,
+        metrics: true,
+        periods: true,
+      },
+    },
+  },
 
   });
 

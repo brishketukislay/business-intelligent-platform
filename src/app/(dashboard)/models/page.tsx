@@ -3,59 +3,49 @@ import {
 } from "@/features/models/services/model-service";
 
 import {
-  ModelList,
-} from "@/features/models/components/model-list";
+  ModelCreateWizard,
+} from "@/features/models/components/model-create-wizard";
 
 import {
-  ModelForm,
-} from "@/features/models/components/model-form";
+  ModelList,
+} from "@/features/models/components/model-list";
 
 import {
   requireCurrentUser,
 } from "@/lib/current-user";
 
-
 export default async function ModelsPage() {
-
   const user =
     await requireCurrentUser();
 
-
   const models =
     await getBusinessModels(
-      user.id
+      user.id,
     );
 
-
   return (
-
-    <div className="space-y-8">
-
-      <div className="flex items-start justify-between gap-4">
-
-        <div className="space-y-1">
-
-          <h1 className="text-2xl font-semibold tracking-tight">
-            Business Models
-          </h1>
-
-          <p className="text-sm text-muted-foreground">
-            Configure and manage business models.
+    <div className="mx-auto max-w-7xl space-y-8">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-sm font-medium text-primary">
+            Performance tracking
           </p>
 
+          <h1 className="mt-1 text-3xl font-semibold tracking-tight">
+            Your trackers
+          </h1>
+
+          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+            Track a company, project, person, sales
+            process or anything else that matters to
+            your organisation.
+          </p>
         </div>
 
-        <ModelForm />
-
+        <ModelCreateWizard />
       </div>
 
-
-      <ModelList
-        models={models}
-      />
-
+      <ModelList models={models} />
     </div>
-
   );
-
 }
