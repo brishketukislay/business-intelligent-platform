@@ -225,8 +225,35 @@ export function ModelCreateWizard() {
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/40 p-4">
-      <div className="mx-auto flex max-h-[calc(100vh-2rem)] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-background shadow-2xl">
+    <div
+  className="
+    fixed
+    inset-0
+    z-50
+    flex
+    items-center
+    justify-center
+    bg-black/50
+    p-4
+  "
+>
+      <div
+  className="
+    mx-auto
+    flex
+    max-h-[calc(100vh-2rem)]
+    w-full
+    max-w-3xl
+    flex-col
+    overflow-hidden
+    rounded-2xl
+    border
+    border-slate-200
+    bg-white
+    text-slate-950
+    shadow-2xl
+  "
+>
         <div className="border-b px-6 py-5">
           <div className="flex items-center justify-between">
             <div>

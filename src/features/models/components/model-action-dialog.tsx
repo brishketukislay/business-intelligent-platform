@@ -14,19 +14,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-
 type ModelActionDialogProps = {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
-
   trigger: ReactNode;
-
   title: string;
   description: string;
-
   children: ReactNode;
 };
-
 
 export function ModelActionDialog({
   open = false,
@@ -36,58 +31,45 @@ export function ModelActionDialog({
   description,
   children,
 }: ModelActionDialogProps) {
-
   function handleTriggerClick() {
-
     onOpenChange?.(true);
-
   }
 
-
-  const triggerElement =
-    isValidElement(trigger)
-      ? cloneElement(
-          trigger as React.ReactElement<{
-            onClick?: (
-              event: React.MouseEvent
-            ) => void;
-          }>,
-          {
-            onClick: handleTriggerClick,
-          }
-        )
-      : trigger;
-
+  const triggerElement = isValidElement(trigger)
+    ? cloneElement(
+        trigger as React.ReactElement<{
+          onClick?: (
+            event: React.MouseEvent
+          ) => void;
+        }>,
+        {
+          onClick: handleTriggerClick,
+        },
+      )
+    : trigger;
 
   return (
-
     <>
-
       {triggerElement}
-
 
       <Dialog
         open={open}
         onOpenChange={onOpenChange}
       >
-
         <DialogContent
           className="
             w-[calc(100%-2rem)]
             max-w-lg
-            border
-            border-slate-200
-            bg-white
+            !border-slate-200
+            !bg-white
+            !text-slate-950
             p-0
-            text-slate-950
             shadow-2xl
             sm:rounded-xl
             [&>button]:text-slate-500
             [&>button]:hover:text-slate-950
-            bg-background text-foreground shadow-xl
           "
         >
-
           <DialogHeader
             className="
               border-b
@@ -97,7 +79,6 @@ export function ModelActionDialog({
               py-5
             "
           >
-
             <DialogTitle
               className="
                 text-lg
@@ -107,7 +88,6 @@ export function ModelActionDialog({
             >
               {title}
             </DialogTitle>
-
 
             <DialogDescription
               className="
@@ -119,9 +99,7 @@ export function ModelActionDialog({
             >
               {description}
             </DialogDescription>
-
           </DialogHeader>
-
 
           <div
             className="
@@ -134,13 +112,8 @@ export function ModelActionDialog({
           >
             {children}
           </div>
-
         </DialogContent>
-
       </Dialog>
-
     </>
-
   );
-
 }

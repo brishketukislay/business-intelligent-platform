@@ -82,7 +82,6 @@ function DialogContent({
 }) {
   return (
     <DialogPortal>
-      {/* Backdrop */}
       <DialogPrimitive.Backdrop
         data-slot="dialog-overlay"
         className={cn(
@@ -97,14 +96,6 @@ function DialogContent({
         )}
       />
 
-      {/*
-       * Full-screen viewport.
-       *
-       * IMPORTANT:
-       * The viewport itself must remain transparent.
-       * The actual popup below is responsible for the
-       * opaque dialog background.
-       */}
       <DialogPrimitive.Viewport
         data-slot="dialog-viewport"
         className={cn(
@@ -119,25 +110,12 @@ function DialogContent({
           data-slot="dialog-content"
           className={cn(
             "relative",
-
-            /*
-             * Default dialog size.
-             * Larger dialogs can override this through
-             * the className supplied by the caller.
-             */
             "w-full max-w-lg",
-
             "overflow-hidden",
             "rounded-2xl",
-            "border border-slate-200",
 
-            /*
-             * Keep the popup itself completely opaque.
-             *
-             * The ! modifier prevents a caller's
-             * bg-background / bg-transparent class from
-             * accidentally making the dialog translucent.
-             */
+            // The modal surface must always be opaque.
+            "!border-slate-200",
             "!bg-white",
             "!text-slate-950",
 
