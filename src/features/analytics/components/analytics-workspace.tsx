@@ -1056,6 +1056,7 @@ Analytics </h2>
         "rounded-2xl",
         "bg-background",
         "p-0",
+        "bg-background", "text-foreground", "shadow-xl"
       )}
     >
       {/* HEADER */}
@@ -1900,7 +1901,7 @@ Analytics </h2>
       }
     }}
   >
-    <DialogContent className="max-w-md">
+    <DialogContent className="max-w-md bg-background text-foreground shadow-xl">
       <DialogHeader>
         <DialogTitle>
           Delete analytics chart?
@@ -1948,7 +1949,7 @@ Analytics </h2>
       }
     }}
   >
-    <DialogContent className="max-w-md">
+    <DialogContent className="max-w-md bg-background text-foreground shadow-xl">
       <DialogHeader>
         <DialogTitle>
           Hide analytics chart?
@@ -1991,7 +1992,7 @@ Analytics </h2>
     open={isManageOpen}
     onOpenChange={setIsManageOpen}
   >
-    <DialogContent className="max-w-lg">
+    <DialogContent className="max-w-lg bg-background text-foreground shadow-xl">
       <DialogHeader>
         <DialogTitle>
           Hidden analytics

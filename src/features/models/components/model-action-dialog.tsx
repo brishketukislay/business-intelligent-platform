@@ -84,6 +84,7 @@ export function ModelActionDialog({
             sm:rounded-xl
             [&>button]:text-slate-500
             [&>button]:hover:text-slate-950
+            bg-background text-foreground shadow-xl
           "
         >
 

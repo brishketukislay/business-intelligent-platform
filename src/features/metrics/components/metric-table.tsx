@@ -406,7 +406,7 @@ export function MetricTable({
         }}
       >
 
-        <DialogContent>
+        < DialogContent className="max-w-md bg-background text-foreground shadow-xl">
 
           <DialogHeader>
 

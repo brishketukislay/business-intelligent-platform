@@ -152,82 +152,105 @@ height:
 });
 
 async function validateConfigSources(
-modelId: string,
-config: AnalyticsChartConfig
+  modelId: string,
+  config: AnalyticsChartConfig
 ) {
-const [
-inputs,
-metrics,
-] =
-await Promise.all([
-prisma.inputDefinition.findMany({
-where: {
-modelId,
-status: "ACTIVE",
-},
-select: {
-id: true,
-},
-}),
+  const [
+    inputs,
+    metrics,
+    scenarios,
+  ] = await Promise.all([
+    prisma.inputDefinition.findMany({
+      where: {
+        modelId,
+        status: "ACTIVE",
+      },
+      select: {
+        id: true,
+      },
+    }),
 
-  prisma.metricDefinition.findMany({
-    where: {
-      modelId,
-      status: "ACTIVE",
-    },
-    select: {
-      id: true,
-    },
-  }),
-]);
+    prisma.metricDefinition.findMany({
+      where: {
+        modelId,
+        status: "ACTIVE",
+      },
+      select: {
+        id: true,
+      },
+    }),
 
-const validSources =
-new Set([
-...inputs.map(
-input =>
-`input:${input.id}`
-),
+    prisma.scenario.findMany({
+      where: {
+        modelId,
+      },
+      select: {
+        id: true,
+      },
+    }),
+  ]);
 
-  ...metrics.map(
-    metric =>
-      `metric:${metric.id}`
-  ),
-]);
+  const validSources =
+    new Set([
+      ...inputs.map(
+        (input) =>
+          `input:${input.id}`
+      ),
 
-for (
-const series of config.series
-) {
-if (
-!validSources.has(
-series.sourceKey
-)
-) {
-throw new Error(
-"One or more selected analytics sources are no longer available."
-);
-}
-}
+      ...metrics.map(
+        (metric) =>
+          `metric:${metric.id}`
+      ),
+    ]);
 
-if (
-config.chartType ===
-"scatter" &&
-config.series.length !== 2
-) {
-throw new Error(
-"Scatter charts require exactly two data series."
-);
-}
+  const validScenarioIds =
+    new Set([
+      "base",
+      ...scenarios.map(
+        (scenario) =>
+          scenario.id
+      ),
+    ]);
 
-if (
-config.chartType ===
-"pie" &&
-config.displayMode !==
-"latest"
-) {
-throw new Error(
-"Pie charts use the latest period."
-);
-}
+  for (const series of config.series) {
+    if (
+      !validSources.has(
+        series.sourceKey
+      )
+    ) {
+      throw new Error(
+        "One or more selected analytics sources are no longer available."
+      );
+    }
+
+    if (
+      !validScenarioIds.has(
+        series.scenarioId
+      )
+    ) {
+      throw new Error(
+        "One or more selected analytics scenarios are no longer available."
+      );
+    }
+  }
+
+  if (
+    config.chartType === "scatter" &&
+    config.series.length !== 2
+  ) {
+    throw new Error(
+      "Scatter charts require exactly two data series."
+    );
+  }
+
+  if (
+    config.chartType === "pie" &&
+    config.displayMode !== "latest"
+  ) {
+    throw new Error(
+      "Pie charts use the latest period."
+    );
+  }
 }
 
 export async function saveAnalyticsChartAction(

@@ -82,29 +82,28 @@ function DialogContent({
 }) {
   return (
     <DialogPortal>
-      {/* 
-       * Backdrop sits behind the dialog.
-       * Do NOT put the backdrop inside the viewport.
-       */}
+      {/* Backdrop */}
       <DialogPrimitive.Backdrop
         data-slot="dialog-overlay"
-        className="fixed inset-0 z-[9998] bg-black/55 supports-[backdrop-filter]:backdrop-blur-[2px]"
+        className={cn(
+          "fixed inset-0 z-[9998]",
+          "bg-black/55",
+          "supports-[backdrop-filter]:backdrop-blur-[2px]",
+          "duration-200",
+          "data-open:animate-in",
+          "data-open:fade-in-0",
+          "data-closed:animate-out",
+          "data-closed:fade-out-0",
+        )}
       />
 
       {/*
-       * The viewport is deliberately WHITE and OPAQUE.
+       * Full-screen viewport.
        *
-       * This is the critical fix.
-       *
-       * Previously:
-       *   bg-background
-       * was resolving to the wrong theme surface.
-       *
-       * Transparent:
-       *   allowed the backdrop/application to show through.
-       *
-       * Solid white:
-       *   gives us a guaranteed opaque canvas.
+       * IMPORTANT:
+       * The viewport itself must remain transparent.
+       * The actual popup below is responsible for the
+       * opaque dialog background.
        */}
       <DialogPrimitive.Viewport
         data-slot="dialog-viewport"
@@ -112,7 +111,7 @@ function DialogContent({
           "fixed inset-0 z-[9999]",
           "flex items-center justify-center",
           "overflow-y-auto",
-          "bg-white",
+          "bg-transparent",
           "p-4 sm:p-6",
         )}
       >
@@ -123,16 +122,25 @@ function DialogContent({
 
             /*
              * Default dialog size.
-             * Large analytics dialogs override this through
-             * the className passed by the caller.
+             * Larger dialogs can override this through
+             * the className supplied by the caller.
              */
             "w-full max-w-lg",
 
             "overflow-hidden",
             "rounded-2xl",
             "border border-slate-200",
-            "bg-white",
-            "text-slate-950",
+
+            /*
+             * Keep the popup itself completely opaque.
+             *
+             * The ! modifier prevents a caller's
+             * bg-background / bg-transparent class from
+             * accidentally making the dialog translucent.
+             */
+            "!bg-white",
+            "!text-slate-950",
+
             "shadow-2xl",
             "ring-1 ring-black/10",
             "outline-none",

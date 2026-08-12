@@ -1122,6 +1122,126 @@ export async function getAnalyticsCharts(
     }
   });
 }
+export async function getAnalyticsChartsForModel(
+  modelId: string,
+  userId: string,
+): Promise<AnalyticsChartRecord[]> {
+  await requireModelAccess(
+    modelId,
+    userId,
+  );
+
+  const charts =
+    await prisma.analyticsChart.findMany({
+      where: {
+        modelId,
+        createdBy: userId,
+      },
+      orderBy: {
+        createdAt: "asc",
+      },
+      select: {
+        id: true,
+        modelId: true,
+        name: true,
+        config: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+  return charts.flatMap((chart) => {
+    try {
+      const parsed =
+        JSON.parse(
+          chart.config,
+        ) as Partial<AnalyticsChartConfig>;
+
+      const config: AnalyticsChartConfig = {
+        title:
+          parsed.title ??
+          chart.name,
+
+        chartType:
+          parsed.chartType ??
+          "line",
+
+        displayMode:
+          parsed.displayMode ??
+          "periods",
+
+        series:
+          Array.isArray(
+            parsed.series,
+          )
+            ? parsed.series.map(
+                (series, index) => ({
+                  id:
+                    series.id ??
+                    `${chart.id}-${index}`,
+
+                  sourceKey:
+                    series.sourceKey,
+
+                  scenarioId:
+                    series.scenarioId ??
+                    "base",
+
+                  label:
+                    typeof series.label ===
+                    "string"
+                      ? series.label
+                      : "",
+
+                  color:
+                    series.color ??
+                    "#2563eb",
+                }),
+              )
+            : [],
+
+        showLegend:
+          parsed.showLegend ??
+          true,
+
+        showGrid:
+          parsed.showGrid ??
+          true,
+
+        showValues:
+          parsed.showValues ??
+          false,
+
+        width:
+          parsed.width ??
+          560,
+
+        height:
+          parsed.height ??
+          360,
+
+        isVisible:
+          parsed.isVisible ??
+          true,
+      };
+
+      return [
+        {
+          id: chart.id,
+          modelId: chart.modelId,
+          name: chart.name,
+          config,
+          createdAt:
+            chart.createdAt.toISOString(),
+          updatedAt:
+            chart.updatedAt.toISOString(),
+        },
+      ];
+    } catch {
+      return [];
+    }
+  });
+}
 
 export async function getAnalyticsDashboardData(
   userId: string

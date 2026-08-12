@@ -1,11 +1,17 @@
-import {
-  prisma,
-} from "@/lib/prisma";
+import { prisma } from "@/lib/prisma";
 
 import {
   requireModelAccess,
   requireModelEditAccess,
 } from "@/lib/model-access";
+
+type BusinessModelData = {
+  name: string;
+  description?: string;
+  status?: "ACTIVE" | "INACTIVE";
+  itemLabelSingular?: string;
+  itemLabelPlural?: string;
+};
 
 export async function getBusinessModels(
   userId: string,
@@ -251,8 +257,7 @@ export async function getBusinessModelOverview(
         : Math.min(
             100,
             Math.round(
-              (entered /
-                expected) *
+              (entered / expected) *
                 100,
             ),
           ),
@@ -260,11 +265,7 @@ export async function getBusinessModelOverview(
 }
 
 export async function createBusinessModel(
-  data: {
-    name: string;
-    description?: string;
-    status?: "ACTIVE" | "INACTIVE";
-  },
+  data: BusinessModelData,
   userId: string,
 ) {
   return prisma.businessModel.create({
@@ -274,6 +275,12 @@ export async function createBusinessModel(
         data.description || null,
       status:
         data.status || "ACTIVE",
+      itemLabelSingular:
+        data.itemLabelSingular ||
+        "Item",
+      itemLabelPlural:
+        data.itemLabelPlural ||
+        "Items",
       createdBy: userId,
     },
   });
@@ -281,11 +288,7 @@ export async function createBusinessModel(
 
 export async function updateBusinessModel(
   modelId: string,
-  data: {
-    name: string;
-    description?: string;
-    status?: "ACTIVE" | "INACTIVE";
-  },
+  data: BusinessModelData,
   userId: string,
 ) {
   await requireModelEditAccess(
@@ -303,6 +306,12 @@ export async function updateBusinessModel(
         data.description || null,
       status:
         data.status || "ACTIVE",
+      itemLabelSingular:
+        data.itemLabelSingular ||
+        "Item",
+      itemLabelPlural:
+        data.itemLabelPlural ||
+        "Items",
     },
   });
 }
