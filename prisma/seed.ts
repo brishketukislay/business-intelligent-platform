@@ -66,7 +66,7 @@ async function main() {
 
           role: "ADMIN",
 
-          status: "APPROVED",
+          status: "ACTIVE",
 
           passwordHash:
             hashPassword(
@@ -103,7 +103,7 @@ async function main() {
             "ADMIN",
 
           status:
-            "APPROVED",
+            "ACTIVE",
 
         },
 
