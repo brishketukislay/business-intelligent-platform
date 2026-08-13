@@ -15,8 +15,8 @@ import {
 } from "@/features/models/components/model-list";
 
 import {
-  AnalyticsChart,
-} from "@/features/analytics/components/analytics-chart";
+  PinnedAnalyticsDashboard,
+} from "@/features/analytics/components/pinned-analytics-dashboard";
 
 import {
   getAnalyticsDashboardData,
@@ -27,7 +27,6 @@ import {
 } from "@/lib/current-user";
 
 import type {
-  AnalyticsChartRecord,
   AnalyticsModelData,
 } from "@/features/analytics/types";
 
@@ -120,10 +119,12 @@ export default async function DashboardPage() {
                     model,
                   ) =>
                     total +
-                    (model
-                      ._count
-                      ?.inputs ??
-                      0),
+                    (
+                      model
+                        ._count
+                        ?.inputs ??
+                      0
+                    ),
                   0,
                 ),
               )}
@@ -138,10 +139,12 @@ export default async function DashboardPage() {
                     model,
                   ) =>
                     total +
-                    (model
-                      ._count
-                      ?.metrics ??
-                      0),
+                    (
+                      model
+                        ._count
+                        ?.metrics ??
+                      0
+                    ),
                   0,
                 ),
               )}
@@ -149,7 +152,7 @@ export default async function DashboardPage() {
           </section>
 
           {pinnedCharts.length > 0 && (
-            <PinnedAnalytics
+            <PinnedAnalyticsDashboard
               charts={
                 pinnedCharts
               }
@@ -210,138 +213,6 @@ export default async function DashboardPage() {
         </>
       )}
     </div>
-  );
-}
-
-function PinnedAnalytics({
-  charts,
-  modelMap,
-}: {
-  charts: AnalyticsChartRecord[];
-  modelMap: Map<
-    string,
-    AnalyticsModelData
-  >;
-}) {
-  const renderableCharts =
-    charts.filter(
-      (chart) =>
-        modelMap.has(
-          chart.modelId,
-        ),
-    );
-
-  if (
-    renderableCharts.length ===
-    0
-  ) {
-    return null;
-  }
-
-  return (
-    <section className="space-y-4">
-      <div className="flex items-end justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <PinIcon />
-
-            <h2 className="text-xl font-semibold">
-              Pinned analytics
-            </h2>
-          </div>
-
-          <p className="mt-1 text-sm text-muted-foreground">
-            Your selected charts at a glance.
-          </p>
-        </div>
-      </div>
-
-      <div className="grid gap-5 lg:grid-cols-2">
-        {renderableCharts.map(
-          (chart) => {
-            const model =
-              modelMap.get(
-                chart.modelId,
-              );
-
-            if (!model) {
-              return null;
-            }
-
-            const width =
-              chart.config.width ??
-              560;
-
-            const height =
-              chart.config.height ??
-              360;
-
-            return (
-              <article
-                key={chart.id}
-                className="overflow-hidden rounded-2xl border border-border bg-background shadow-sm"
-              >
-                <div className="flex items-center justify-between gap-4 border-b border-border px-5 py-4">
-                  <div className="min-w-0">
-                    <h3 className="truncate text-sm font-semibold">
-                      {chart.name}
-                    </h3>
-
-                    <p className="mt-1 truncate text-xs text-muted-foreground">
-                      {model.model.name}
-                    </p>
-                  </div>
-
-                  <span className="shrink-0 rounded-full bg-primary/10 px-2 py-1 text-[10px] font-medium text-primary">
-                    Pinned
-                  </span>
-                </div>
-
-                <div className="p-4">
-                  <AnalyticsChart
-                    modelData={
-                      model
-                    }
-                    config={{
-                      ...chart.config,
-                      width,
-                      height:
-                        Math.max(
-                          280,
-                          height -
-                            48,
-                        ),
-                    }}
-                  />
-                </div>
-              </article>
-            );
-          },
-        )}
-      </div>
-    </section>
-  );
-}
-
-function PinIcon() {
-  return (
-    <span className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-      <svg
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        className="size-4"
-        aria-hidden="true"
-      >
-        <path d="M12 17v5" />
-        <path d="M5 3h14" />
-        <path d="M6 3l1 7a5 5 0 0 0 10 0l1-7" />
-        <path d="M5 10h14" />
-      </svg>
-    </span>
   );
 }
 
