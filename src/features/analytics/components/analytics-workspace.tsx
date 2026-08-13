@@ -38,6 +38,8 @@ EyeOff,
 Settings2,
 X,
 Check,
+Pin,
+PinOff,
 } from "lucide-react";
 
 import {
@@ -46,6 +48,7 @@ updateAnalyticsChartAction,
 deleteAnalyticsChartAction,
 setAnalyticsChartVisibilityAction,
 updateAnalyticsChartLayoutAction,
+  setAnalyticsChartPinnedAction,
 } from "../actions/analytics-actions";
 
 import { AnalyticsChart } from "./analytics-chart";
@@ -280,100 +283,146 @@ function ResizeHandle({
 }
 
 function ChartCard({
-chart,
-modelData,
-onEdit,
-onHide,
-onDelete,
-onResize,
+  chart,
+  modelData,
+  onEdit,
+  onHide,
+  onDelete,
+  onResize,
+  onPin,
 }: {
-chart: AnalyticsChartRecord;
-modelData: AnalyticsModelData;
-onEdit: (chart: AnalyticsChartRecord) => void;
-onHide: (chart: AnalyticsChartRecord) => void;
-onDelete: (chart: AnalyticsChartRecord) => void;
-onResize: (
-chart: AnalyticsChartRecord,
-width: number,
-height: number,
-) => void;
+  chart: AnalyticsChartRecord;
+  modelData: AnalyticsModelData;
+  onEdit: (chart: AnalyticsChartRecord) => void;
+  onHide: (chart: AnalyticsChartRecord) => void;
+  onDelete: (chart: AnalyticsChartRecord) => void;
+  onResize: (
+    chart: AnalyticsChartRecord,
+    width: number,
+    height: number,
+  ) => void;
+  onPin: (chart: AnalyticsChartRecord) => void;
 }) {
-const width =
-chart.config.width ?? DEFAULT_WIDTH;
+  const width =
+    chart.config.width ?? DEFAULT_WIDTH;
 
-const height =
-chart.config.height ?? DEFAULT_HEIGHT;
+  const height =
+    chart.config.height ?? DEFAULT_HEIGHT;
 
-return (
-<article
-className="relative min-w-[320px] max-w-full overflow-hidden rounded-xl border border-border bg-background shadow-sm"
-style={{
-width,
-height,
-}}
-> <div className="flex h-12 shrink-0 items-center justify-between border-b border-border px-3"> <div className="flex min-w-0 items-center gap-2"> <ChartTypeIcon type={chart.config.chartType} />
-      <h3 className="truncate text-sm font-semibold">
-        {chart.name}
-      </h3>
-    </div>
+  const isPinned =
+    chart.config.isPinned === true;
 
-    <div className="flex shrink-0 items-center gap-0.5">
-      <Button
-        type="button"
-        size="icon-sm"
-        variant="ghost"
-        aria-label="Edit chart"
-        onClick={() => onEdit(chart)}
-      >
-        <Pencil />
-      </Button>
-
-      <Button
-        type="button"
-        size="icon-sm"
-        variant="ghost"
-        aria-label="Hide chart"
-        onClick={() => onHide(chart)}
-      >
-        <EyeOff />
-      </Button>
-
-      <Button
-        type="button"
-        size="icon-sm"
-        variant="ghost"
-        className="text-destructive hover:text-destructive"
-        aria-label="Delete chart"
-        onClick={() => onDelete(chart)}
-      >
-        <X />
-      </Button>
-    </div>
-  </div>
-
-  <div className="h-[calc(100%-3rem)] w-full p-3">
-    <AnalyticsChart
-      modelData={modelData}
-      config={{
-        ...chart.config,
+  return (
+    <article
+      className="relative min-w-[320px] max-w-full overflow-hidden rounded-xl border border-border bg-background shadow-sm"
+      style={{
         width,
-        height: Math.max(280, height - 48),
+        height,
       }}
-    />
-  </div>
+    >
+      <div className="flex h-12 shrink-0 items-center justify-between border-b border-border px-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <ChartTypeIcon
+            type={chart.config.chartType}
+          />
 
-  <ResizeHandle
-    onResize={(nextWidth, nextHeight) =>
-      onResize(
-        chart,
-        nextWidth,
-        nextHeight,
-      )
-    }
-  />
-</article>
+          <h3 className="truncate text-sm font-semibold">
+            {chart.name}
+          </h3>
 
-);
+          {isPinned && (
+            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+              <Pin className="size-3" />
+              Pinned
+            </span>
+          )}
+        </div>
+
+        <div className="flex shrink-0 items-center gap-0.5">
+          <Button
+            type="button"
+            size="icon-sm"
+            variant="ghost"
+            aria-label={
+              isPinned
+                ? "Unpin chart from dashboard"
+                : "Pin chart to dashboard"
+            }
+            title={
+              isPinned
+                ? "Unpin from dashboard"
+                : "Pin to dashboard"
+            }
+            onClick={() => onPin(chart)}
+          >
+            {isPinned ? (
+              <PinOff />
+            ) : (
+              <Pin />
+            )}
+          </Button>
+
+          <Button
+            type="button"
+            size="icon-sm"
+            variant="ghost"
+            aria-label="Edit chart"
+            onClick={() => onEdit(chart)}
+          >
+            <Pencil />
+          </Button>
+
+          <Button
+            type="button"
+            size="icon-sm"
+            variant="ghost"
+            aria-label="Hide chart"
+            onClick={() => onHide(chart)}
+          >
+            <EyeOff />
+          </Button>
+
+          <Button
+            type="button"
+            size="icon-sm"
+            variant="ghost"
+            className="text-destructive hover:text-destructive"
+            aria-label="Delete chart"
+            onClick={() => onDelete(chart)}
+          >
+            <X />
+          </Button>
+        </div>
+      </div>
+
+      <div className="h-[calc(100%-3rem)] w-full p-3">
+        <AnalyticsChart
+          modelData={modelData}
+          config={{
+            ...chart.config,
+            width,
+            height: Math.max(
+              280,
+              height - 48,
+            ),
+          }}
+        />
+      </div>
+
+      <ResizeHandle
+        onResize={(
+          nextWidth,
+          nextHeight,
+        ) =>
+          onResize(
+            chart,
+            nextWidth,
+            nextHeight,
+          )
+        }
+      />
+    </article>
+  );
 }
 
 export default function AnalyticsWorkspace({
@@ -793,6 +842,28 @@ if (!result.success) {
 router.refresh();
 
 }
+async function togglePinned(
+  chart: AnalyticsChartRecord,
+) {
+  const nextPinned =
+    chart.config.isPinned !== true;
+
+  const result =
+    await setAnalyticsChartPinnedAction(
+      chart.id,
+      nextPinned,
+    );
+
+  if (!result.success) {
+    setError(
+      result.error ??
+        "Unable to update chart pin state.",
+    );
+    return;
+  }
+
+  router.refresh();
+}
 
 async function restoreChart(
 chart: AnalyticsChartRecord,
@@ -1007,14 +1078,15 @@ Analytics </h2>
 
         return (
           <ChartCard
-            key={chart.id}
-            chart={effectiveChart}
-            modelData={model}
-            onEdit={openEdit}
-            onHide={setHideTarget}
-            onDelete={setDeleteTarget}
-            onResize={resizeChart}
-          />
+  key={chart.id}
+  chart={effectiveChart}
+  modelData={model}
+  onEdit={openEdit}
+  onHide={setHideTarget}
+  onDelete={setDeleteTarget}
+  onResize={resizeChart}
+  onPin={togglePinned}
+/>
         );
       })}
     </div>

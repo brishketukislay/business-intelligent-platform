@@ -68,18 +68,23 @@ export type AnalyticsChartConfig = {
 
   /**
    * Dashboard layout.
-   *
-   * Existing charts that do not have these values are
-   * normalised to the defaults by the analytics service.
    */
   width?: number;
   height?: number;
 
   /**
-   * Whether this chart is currently shown on the dashboard.
-   * Saved charts are visible by default.
+   * Controls visibility inside the model's
+   * Analytics workspace.
+   *
+   * This is NOT dashboard pinning.
    */
   isVisible?: boolean;
+
+  /**
+   * Controls whether this chart appears
+   * on the main dashboard.
+   */
+  isPinned?: boolean;
 };
 
 export type AnalyticsChartRecord = {
@@ -101,21 +106,11 @@ export type AnalyticsModelData = {
   sources: AnalyticsSource[];
   scenarios: AnalyticsScenario[];
 
-  /**
-   * Base/current model values.
-   *
-   * values[sourceKey][periodIndex]
-   */
   values: Record<
     string,
     Array<number | null>
   >;
 
-  /**
-   * Scenario values.
-   *
-   * scenarioValues[scenarioId][sourceKey][periodIndex]
-   */
   scenarioValues: Record<
     string,
     Record<string, Array<number | null>>

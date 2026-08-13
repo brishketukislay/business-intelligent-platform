@@ -58,19 +58,14 @@ type ScenarioValueRecord = {
   value: string;
 };
 
-type ScenarioRecord = {
-  id: string;
-  name: string;
-};
-
 function numericValue(
   value: string | null | undefined
 ): number | undefined {
-  if (value === null || value === undefined) {
-    return undefined;
-  }
-
-  if (value.trim() === "") {
+  if (
+    value === null ||
+    value === undefined ||
+    value.trim() === ""
+  ) {
     return undefined;
   }
 
@@ -988,11 +983,11 @@ export async function getAnalyticsModelData(
 
   return {
     model: {
-  id:
-    access.model.id,
-  name:
-    access.model.name,
-},
+      id:
+        access.model.id,
+      name:
+        access.model.name,
+    },
     periods:
       analyticsPeriods,
     sources,
@@ -1004,8 +999,133 @@ export async function getAnalyticsModelData(
   };
 }
 
+function parseAnalyticsChartConfig(
+  chartId: string,
+  chartName: string,
+  rawConfig: string
+): AnalyticsChartConfig {
+  const parsed =
+    JSON.parse(
+      rawConfig
+    ) as Partial<AnalyticsChartConfig>;
+
+  return {
+    title:
+      parsed.title ??
+      chartName,
+
+    chartType:
+      parsed.chartType ??
+      "line",
+
+    displayMode:
+      parsed.displayMode ??
+      "periods",
+
+    series:
+      Array.isArray(
+        parsed.series
+      )
+        ? parsed.series.map(
+            (series, index) => ({
+              id:
+                series.id ??
+                `${chartId}-${index}`,
+
+              sourceKey:
+                series.sourceKey,
+
+              scenarioId:
+                series.scenarioId ??
+                "base",
+
+              label:
+                typeof series.label ===
+                "string"
+                  ? series.label
+                  : "",
+
+              color:
+                series.color ??
+                "#2563eb",
+            })
+          )
+        : [],
+
+    showLegend:
+      parsed.showLegend ??
+      true,
+
+    showGrid:
+      parsed.showGrid ??
+      true,
+
+    showValues:
+      parsed.showValues ??
+      false,
+
+    width:
+      parsed.width ??
+      560,
+
+    height:
+      parsed.height ??
+      360,
+
+    /**
+     * Existing charts remain visible by default.
+     */
+    isVisible:
+      parsed.isVisible ??
+      true,
+
+    /**
+     * Existing charts are not pinned by default.
+     */
+    isPinned:
+      parsed.isPinned ??
+      false,
+  };
+}
+
+function mapAnalyticsChart(
+  chart: {
+    id: string;
+    modelId: string;
+    name: string;
+    config: string;
+    createdAt: Date;
+    updatedAt: Date;
+  }
+): AnalyticsChartRecord | null {
+  try {
+    const config =
+      parseAnalyticsChartConfig(
+        chart.id,
+        chart.name,
+        chart.config
+      );
+
+    return {
+      id:
+        chart.id,
+      modelId:
+        chart.modelId,
+      name:
+        chart.name,
+      config,
+      createdAt:
+        chart.createdAt.toISOString(),
+      updatedAt:
+        chart.updatedAt.toISOString(),
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function getAnalyticsCharts(
-  userId: string,
+  userId: string
 ): Promise<AnalyticsChartRecord[]> {
   const charts =
     await prisma.analyticsChart.findMany({
@@ -1027,108 +1147,27 @@ export async function getAnalyticsCharts(
       },
     });
 
-  return charts.flatMap((chart) => {
-    try {
-      const parsed =
-        JSON.parse(
-          chart.config,
-        ) as Partial<AnalyticsChartConfig>;
+  return charts.flatMap(
+    chart => {
+      const mapped =
+        mapAnalyticsChart(
+          chart
+        );
 
-      const config: AnalyticsChartConfig = {
-        title:
-          parsed.title ??
-          chart.name,
-
-        chartType:
-          parsed.chartType ??
-          "line",
-
-        displayMode:
-          parsed.displayMode ??
-          "periods",
-
-        series:
-          Array.isArray(
-            parsed.series,
-          )
-            ? parsed.series.map(
-                (series, index) => ({
-                  id:
-                    series.id ??
-                    `${chart.id}-${index}`,
-
-                  sourceKey:
-                    series.sourceKey,
-
-                  scenarioId:
-                    series.scenarioId ??
-                    "base",
-
-                  label:
-                    typeof series.label ===
-                    "string"
-                      ? series.label
-                      : "",
-
-                  color:
-                    series.color ??
-                    "#2563eb",
-                }),
-              )
-            : [],
-
-        showLegend:
-          parsed.showLegend ??
-          true,
-
-        showGrid:
-          parsed.showGrid ??
-          true,
-
-        showValues:
-          parsed.showValues ??
-          false,
-
-        width:
-          parsed.width ??
-          560,
-
-        height:
-          parsed.height ??
-          360,
-
-        /**
-         * Existing charts are visible by default.
-         */
-        isVisible:
-          parsed.isVisible ??
-          true,
-      };
-
-      return [
-        {
-          id: chart.id,
-          modelId: chart.modelId,
-          name: chart.name,
-          config,
-          createdAt:
-            chart.createdAt.toISOString(),
-          updatedAt:
-            chart.updatedAt.toISOString(),
-        },
-      ];
-    } catch {
-      return [];
+      return mapped
+        ? [mapped]
+        : [];
     }
-  });
+  );
 }
+
 export async function getAnalyticsChartsForModel(
   modelId: string,
-  userId: string,
+  userId: string
 ): Promise<AnalyticsChartRecord[]> {
   await requireModelAccess(
     modelId,
-    userId,
+    userId
   );
 
   const charts =
@@ -1137,9 +1176,11 @@ export async function getAnalyticsChartsForModel(
         modelId,
         createdBy: userId,
       },
+
       orderBy: {
         createdAt: "asc",
       },
+
       select: {
         id: true,
         modelId: true,
@@ -1150,97 +1191,18 @@ export async function getAnalyticsChartsForModel(
       },
     });
 
-  return charts.flatMap((chart) => {
-    try {
-      const parsed =
-        JSON.parse(
-          chart.config,
-        ) as Partial<AnalyticsChartConfig>;
+  return charts.flatMap(
+    chart => {
+      const mapped =
+        mapAnalyticsChart(
+          chart
+        );
 
-      const config: AnalyticsChartConfig = {
-        title:
-          parsed.title ??
-          chart.name,
-
-        chartType:
-          parsed.chartType ??
-          "line",
-
-        displayMode:
-          parsed.displayMode ??
-          "periods",
-
-        series:
-          Array.isArray(
-            parsed.series,
-          )
-            ? parsed.series.map(
-                (series, index) => ({
-                  id:
-                    series.id ??
-                    `${chart.id}-${index}`,
-
-                  sourceKey:
-                    series.sourceKey,
-
-                  scenarioId:
-                    series.scenarioId ??
-                    "base",
-
-                  label:
-                    typeof series.label ===
-                    "string"
-                      ? series.label
-                      : "",
-
-                  color:
-                    series.color ??
-                    "#2563eb",
-                }),
-              )
-            : [],
-
-        showLegend:
-          parsed.showLegend ??
-          true,
-
-        showGrid:
-          parsed.showGrid ??
-          true,
-
-        showValues:
-          parsed.showValues ??
-          false,
-
-        width:
-          parsed.width ??
-          560,
-
-        height:
-          parsed.height ??
-          360,
-
-        isVisible:
-          parsed.isVisible ??
-          true,
-      };
-
-      return [
-        {
-          id: chart.id,
-          modelId: chart.modelId,
-          name: chart.name,
-          config,
-          createdAt:
-            chart.createdAt.toISOString(),
-          updatedAt:
-            chart.updatedAt.toISOString(),
-        },
-      ];
-    } catch {
-      return [];
+      return mapped
+        ? [mapped]
+        : [];
     }
-  });
+  );
 }
 
 export async function getAnalyticsDashboardData(
@@ -1265,6 +1227,7 @@ export async function getAnalyticsDashboardData(
             )
         )
       ),
+
       getAnalyticsCharts(
         userId
       ),

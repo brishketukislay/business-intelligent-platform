@@ -119,6 +119,10 @@ isVisible:
   z.boolean()
     .optional()
     .default(true),
+isPinned:
+  z.boolean()
+    .optional()
+    .default(false),
 });
 
 const saveSchema =
@@ -555,7 +559,82 @@ return {
 
 }
 }
+export async function setAnalyticsChartPinnedAction(
+  chartId: string,
+  isPinned: boolean,
+) {
+  const user =
+    await requireCurrentUser();
 
+  try {
+    const chart =
+      await prisma.analyticsChart.findUnique({
+        where: {
+          id: chartId,
+        },
+        select: {
+          id: true,
+          createdBy: true,
+          config: true,
+        },
+      });
+
+    if (!chart) {
+      throw new Error(
+        "Analytics chart not found.",
+      );
+    }
+
+    if (
+      chart.createdBy !==
+      user.id
+    ) {
+      throw new Error(
+        "You do not own this analytics chart.",
+      );
+    }
+
+    const existing =
+      JSON.parse(
+        chart.config,
+      ) as AnalyticsChartConfig;
+
+    await prisma.analyticsChart.update({
+      where: {
+        id: chart.id,
+      },
+
+      data: {
+        config:
+          JSON.stringify({
+            ...existing,
+            isPinned,
+          }),
+      },
+    });
+
+    revalidatePath(
+      "/dashboard",
+    );
+
+    return {
+      success: true,
+    };
+  } catch (error) {
+    console.error(
+      "Failed to update analytics chart pin state:",
+      error,
+    );
+
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Unable to update analytics chart pin state.",
+    };
+  }
+}
 export async function setAnalyticsChartVisibilityAction(
 chartId: string,
 isVisible: boolean
