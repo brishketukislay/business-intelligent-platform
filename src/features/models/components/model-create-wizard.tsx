@@ -136,6 +136,32 @@ export function ModelCreateWizard() {
       ),
     );
 
+  /*
+   * Custom inputs are optional.
+   *
+   * A CUSTOM tracker can legitimately be
+   * created with no inputs. Users can add
+   * measures after the tracker has been created.
+   */
+  const [customInputs, setCustomInputs] =
+    useState<
+      Array<{
+        name: string;
+        type:
+          | "Number"
+          | "Currency"
+          | "Percentage"
+          | "Text";
+        scope:
+          | "MODEL"
+          | "PERIOD"
+          | "ITEM"
+          | "ITEM_PERIOD";
+        unit?: string;
+        category?: string;
+      }>
+    >([]);
+
   const [saving, setSaving] =
     useState(false);
 
@@ -149,16 +175,25 @@ export function ModelCreateWizard() {
       getTrackerTemplate(type);
 
     setModelType(type);
+
     setInputKeys(
       next.inputs.map(
         (input) => input.key,
       ),
     );
+
     setMetricKeys(
       next.metrics.map(
         (metric) => metric.key,
       ),
     );
+
+    /*
+     * Custom inputs belong to the selected
+     * tracker configuration, so clear them
+     * when switching tracker types.
+     */
+    setCustomInputs([]);
   }
 
   function toggle(
@@ -192,6 +227,17 @@ export function ModelCreateWizard() {
         currency,
         inputKeys,
         metricKeys,
+
+        /*
+         * This was the missing field.
+         *
+         * The server schema requires customInputs,
+         * even when there are no custom inputs.
+         *
+         * Sending [] makes a blank CUSTOM tracker
+         * valid.
+         */
+        customInputs,
       });
 
     if (!result.success) {
@@ -204,9 +250,11 @@ export function ModelCreateWizard() {
     }
 
     setOpen(false);
+
     router.push(
       `/models/${result.modelId}`,
     );
+
     router.refresh();
   }
 
@@ -216,6 +264,7 @@ export function ModelCreateWizard() {
         onClick={() => {
           setOpen(true);
           setStep(1);
+          setError(null);
         }}
       >
         <Plus className="mr-2 size-4" />
@@ -225,41 +274,15 @@ export function ModelCreateWizard() {
   }
 
   return (
-    <div
-  className="
-    fixed
-    inset-0
-    z-50
-    flex
-    items-center
-    justify-center
-    bg-black/50
-    p-4
-  "
->
-      <div
-  className="
-    mx-auto
-    flex
-    max-h-[calc(100vh-2rem)]
-    w-full
-    max-w-3xl
-    flex-col
-    overflow-hidden
-    rounded-2xl
-    border
-    border-slate-200
-    bg-white
-    text-slate-950
-    shadow-2xl
-  "
->
-        <div className="border-b px-6 py-5">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="mx-auto flex max-h-[calc(100vh-2rem)] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white text-slate-950 shadow-2xl">
+        <div className="border-b border-slate-200 px-6 py-5">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-xl font-semibold">
                 Create a tracker
               </h2>
+
               <p className="mt-1 text-sm text-muted-foreground">
                 Set it up once. Your team can then
                 update the numbers without touching
@@ -269,8 +292,12 @@ export function ModelCreateWizard() {
 
             <button
               type="button"
-              onClick={() => setOpen(false)}
-              className="text-muted-foreground"
+              onClick={() => {
+                setOpen(false);
+                setError(null);
+              }}
+              className="text-muted-foreground hover:text-foreground"
+              aria-label="Close"
             >
               ✕
             </button>
@@ -354,6 +381,7 @@ export function ModelCreateWizard() {
                 <h3 className="text-lg font-semibold">
                   Give it a name
                 </h3>
+
                 <p className="mt-1 text-sm text-muted-foreground">
                   Use a name your team will recognise.
                 </p>
@@ -421,6 +449,7 @@ export function ModelCreateWizard() {
                   <span className="text-sm font-medium">
                     Currency
                   </span>
+
                   <select
                     value={currency}
                     onChange={(event) =>
@@ -433,9 +462,11 @@ export function ModelCreateWizard() {
                     <option value="GBP">
                       GBP (£)
                     </option>
+
                     <option value="EUR">
                       EUR (€)
                     </option>
+
                     <option value="USD">
                       USD ($)
                     </option>
@@ -446,6 +477,7 @@ export function ModelCreateWizard() {
                   <span className="text-sm font-medium">
                     Financial year starts
                   </span>
+
                   <select
                     value={
                       fiscalYearStartMonth
@@ -518,9 +550,11 @@ export function ModelCreateWizard() {
                           <div className="font-medium">
                             {input.name}
                           </div>
+
                           <div className="text-sm text-muted-foreground">
                             {input.category ??
                               input.type}
+
                             {input.unit
                               ? ` · ${input.unit}`
                               : ""}
@@ -547,14 +581,22 @@ export function ModelCreateWizard() {
 
           {step === 4 && (
             <div>
-              <h3 className="text-lg font-semibold">
-                Automatic calculations
-              </h3>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-lg font-semibold">
+                    Automatic calculations
+                  </h3>
 
-              <p className="mt-1 text-sm text-muted-foreground">
-                These are calculated from the inputs you
-                selected.
-              </p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    These are calculated from the inputs you
+                    selected. You can add calculated metrics later.
+                  </p>
+                </div>
+
+                <span className="shrink-0 rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                  Optional
+                </span>
+              </div>
 
               <div className="mt-5 space-y-2">
                 {template.metrics.map(
@@ -600,8 +642,15 @@ export function ModelCreateWizard() {
                 )}
 
                 {template.metrics.length === 0 && (
-                  <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-                    You can add calculated metrics later.
+                  <div className="rounded-lg border border-dashed p-8 text-center">
+                    <p className="text-sm font-medium text-foreground">
+                      No automatic calculations yet
+                    </p>
+
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      You can create calculated metrics after
+                      your model has been created.
+                    </p>
                   </div>
                 )}
               </div>
@@ -615,21 +664,24 @@ export function ModelCreateWizard() {
           )}
         </div>
 
-        <div className="flex items-center justify-between border-t px-6 py-4">
+        <div className="flex items-center justify-between border-t border-slate-200 px-6 py-4">
           <Button
             type="button"
             variant="outline"
             onClick={() => {
               if (step === 1) {
                 setOpen(false);
+                setError(null);
               } else {
                 setStep(
                   step - 1,
                 );
+                setError(null);
               }
             }}
           >
             <ChevronLeft className="mr-2 size-4" />
+
             {step === 1
               ? "Cancel"
               : "Back"}
@@ -649,6 +701,7 @@ export function ModelCreateWizard() {
               }
             >
               Continue
+
               <ChevronRight className="ml-2 size-4" />
             </Button>
           ) : (
